@@ -1,1 +1,25 @@
-{"name":"Nexus Player","short_name":"Nexus","description":"Seu espaço, seu som.","lang":"pt-BR","start_url":"./","scope":"./","display":"standalone","background_color":"#0b0b18","theme_color":"#0b0b18"}
+{
+  "name": "Nexus Player",
+  "short_name": "Nexus Player",
+  "description": "Seu espaço, seu som.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080814",
+  "theme_color": "#080814",
+  "icons": [
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/nexus-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
