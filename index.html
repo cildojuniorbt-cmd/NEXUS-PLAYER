@@ -213,6 +213,42 @@ body.home-mode .np-home-controls{margin:15px 0 14px}
  .np-viz-current span{font-size:27px}
  .np-viz-current strong{font-size:clamp(11px,3.5vw,15px)}
 }
+/* SVG safety artwork remains visible if iOS Web Audio or Canvas stalls */
+.np-now-cover{isolation:isolate;--viz-audio-level:.06}
+#home-visualizer{z-index:2!important}
+.np-viz-fallback{position:absolute;inset:0;width:100%;height:100%;z-index:1;overflow:hidden;pointer-events:none;opacity:.86}
+.np-viz-fallback .viz-art{display:none;transform-origin:50% 50%;transition:transform .12s ease-out}
+.np-now-cover[data-viz-style="waves"] .viz-art-waves,
+.np-now-cover[data-viz-style="spectrum"] .viz-art-spectrum,
+.np-now-cover[data-viz-style="particles"] .viz-art-particles,
+.np-now-cover[data-viz-style="circular"] .viz-art-circular,
+.np-now-cover[data-viz-style="vortex"] .viz-art-vortex,
+.np-now-cover[data-viz-style="cube"] .viz-art-cube,
+.np-now-cover[data-viz-style="pulse"] .viz-art-pulse,
+.np-now-cover[data-viz-style="rings"] .viz-art-rings,
+.np-now-cover[data-viz-style="mirror"] .viz-art-mirror,
+.np-now-cover[data-viz-style="scope"] .viz-art-scope,
+.np-now-cover[data-viz-style="aurora"] .viz-art-aurora,
+.np-now-cover[data-viz-style="tunnel"] .viz-art-tunnel{display:block}
+.nwv-grid path{fill:none;stroke:#4b3680;stroke-width:1.3;opacity:.42}
+.nwv-wave{fill:none;stroke:url(#nwv-purple-blue);stroke-linecap:round;stroke-linejoin:round;stroke-width:5}
+.nwv-wave-glow{stroke-width:19;opacity:.28;filter:url(#nwv-blur);animation:nwv-wave-pulse 3.2s ease-in-out infinite}
+.nwv-wave-back{stroke-width:4;opacity:.46;animation:nwv-wave-pulse 3.8s ease-in-out infinite reverse}
+.nwv-wave-front{stroke-width:5;opacity:.9;animation:nwv-wave-pulse 2.8s ease-in-out infinite}
+.nwv-wave-cyan{stroke:#40c9ff;stroke-width:3;opacity:.72;animation:nwv-wave-pulse 3.4s ease-in-out infinite reverse}
+.nwv-bars rect{fill:url(#nwv-purple-blue);filter:url(#nwv-blur);transform-box:fill-box;transform-origin:center;animation:nwv-bar 1.2s ease-in-out infinite alternate}
+.nwv-bars rect:nth-child(2n){animation-delay:-.4s}.nwv-bars rect:nth-child(3n){animation-delay:-.8s}
+.nwv-cube{transform-box:fill-box;transform-origin:center;animation:nwv-cube 9s linear infinite}
+.nwv-ring{transform-origin:350px 350px;animation:nwv-ring 7s linear infinite}
+.nwv-spokes{transform-origin:350px 350px;animation:nwv-ring 12s linear infinite reverse}
+.np-now-cover[data-viz-style="vortex"] .viz-art-vortex{transform-origin:350px 350px;animation:nwv-ring 10s linear infinite}
+.np-now-cover[data-viz-style="tunnel"] .viz-art-tunnel{transform-origin:350px 350px;animation:nwv-ring 14s linear infinite}
+.np-now-cover[data-viz-style="aurora"] .viz-art-aurora{animation:nwv-wave-pulse 4s ease-in-out infinite}
+.np-now-cover[data-viz-style="particles"] .viz-art-particles{animation:nwv-wave-pulse 2.5s ease-in-out infinite}
+@keyframes nwv-wave-pulse{0%,100%{transform:translateY(0) scaleY(.9);opacity:.7}50%{transform:translateY(-9px) scaleY(1.08);opacity:1}}
+@keyframes nwv-bar{0%{transform:scaleY(.36)}100%{transform:scaleY(1.16)}}
+@keyframes nwv-cube{0%{transform:rotateY(0deg) rotateX(0deg)}50%{transform:rotateY(180deg) rotateX(14deg)}100%{transform:rotateY(360deg) rotateX(0deg)}}
+@keyframes nwv-ring{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -263,7 +299,73 @@ body.home-mode .np-home-controls{margin:15px 0 14px}
       <div class="np-cover-area">
         <div class="np-cover-glow"></div>
         <div class="np-now-cover" id="home-cover">
-          <canvas id="home-visualizer" aria-label="Ondas 3D que reagem à música"></canvas>
+          <canvas id="home-visualizer" aria-label="Visualizador de áudio que reage à música"></canvas>
+          <svg class="np-viz-fallback" viewBox="0 0 700 700" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="nwv-purple-blue" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b83dff"/><stop offset=".48" stop-color="#a64dff"/><stop offset="1" stop-color="#28c7ff"/></linearGradient>
+              <radialGradient id="nwv-glow"><stop offset="0" stop-color="#8d31ff" stop-opacity=".24"/><stop offset="1" stop-color="#080817" stop-opacity="0"/></radialGradient>
+              <filter id="nwv-blur"><feGaussianBlur stdDeviation="8"/></filter>
+            </defs>
+            <rect width="700" height="700" fill="url(#nwv-glow)"/>
+            <g class="viz-art viz-art-waves">
+              <g class="nwv-grid">
+                <path d="M0 360H700M0 400H700M0 440H700M0 480H700M0 520H700M0 560H700M0 600H700M0 640H700" />
+                <path d="M350 210L0 680M350 210L70 680M350 210L140 680M350 210L210 680M350 210L280 680M350 210L420 680M350 210L490 680M350 210L560 680M350 210L630 680M350 210L700 680"/>
+              </g>
+              <path class="nwv-wave nwv-wave-glow" d="M0 350 C75 350 80 250 155 270 S245 430 330 350 S420 220 495 275 S610 420 700 325"/>
+              <path class="nwv-wave nwv-wave-back" d="M0 380 C90 340 95 285 180 300 S260 400 350 350 S470 250 535 290 S630 385 700 350"/>
+              <path class="nwv-wave nwv-wave-front" d="M0 410 C85 395 95 315 180 330 S270 455 355 375 S465 275 540 335 S635 430 700 390"/>
+              <path class="nwv-wave nwv-wave-cyan" d="M0 430 C90 410 110 360 185 365 S275 460 360 405 S480 320 545 360 S630 445 700 410"/>
+            </g>
+            <g class="viz-art viz-art-spectrum">
+              <g class="nwv-bars">
+                <rect x="90" y="305" width="18" height="90" rx="8"/><rect x="130" y="255" width="18" height="190" rx="8"/><rect x="170" y="215" width="18" height="270" rx="8"/><rect x="210" y="275" width="18" height="150" rx="8"/><rect x="250" y="180" width="18" height="340" rx="8"/><rect x="290" y="235" width="18" height="230" rx="8"/><rect x="330" y="155" width="18" height="390" rx="8"/><rect x="370" y="240" width="18" height="220" rx="8"/><rect x="410" y="200" width="18" height="300" rx="8"/><rect x="450" y="280" width="18" height="140" rx="8"/><rect x="490" y="220" width="18" height="260" rx="8"/><rect x="530" y="300" width="18" height="110" rx="8"/>
+              </g>
+            </g>
+            <g class="viz-art viz-art-cube">
+              <g class="nwv-cube" fill="none" stroke="url(#nwv-purple-blue)" stroke-width="5" stroke-linejoin="round">
+                <path d="M350 195L490 275L350 355L210 275Z"/>
+                <path d="M210 275V435L350 520L490 435V275"/>
+                <path d="M350 355V520"/>
+                <path d="M210 435L350 355L490 435"/>
+              </g>
+              <path d="M350 195L490 275L350 355L210 275Z" fill="#a43dff" opacity=".08"/>
+            </g>
+            <g class="viz-art viz-art-circular">
+              <g class="nwv-ring" fill="none" stroke="url(#nwv-purple-blue)" stroke-width="5">
+                <circle cx="350" cy="350" r="125"/><circle cx="350" cy="350" r="165" opacity=".6"/><circle cx="350" cy="350" r="205" opacity=".3"/>
+              </g>
+              <g class="nwv-spokes" stroke="#c35cff" stroke-width="4"><path d="M350 125V205M350 495V575M125 350H205M495 350H575M191 191L247 247M453 453L509 509M509 191L453 247M247 453L191 509"/></g>
+            </g>
+            <g class="viz-art viz-art-particles" fill="#c35cff">
+              <circle cx="350" cy="350" r="17"/><circle cx="260" cy="290" r="8"/><circle cx="440" cy="290" r="8"/><circle cx="260" cy="430" r="8"/><circle cx="440" cy="430" r="8"/><circle cx="350" cy="225" r="7"/><circle cx="350" cy="475" r="7"/><circle cx="215" cy="350" r="7"/><circle cx="485" cy="350" r="7"/>
+            </g>
+            <g class="viz-art viz-art-vortex" fill="none" stroke="url(#nwv-purple-blue)" stroke-width="5">
+              <path d="M350 350C520 315 515 190 380 195C210 200 175 425 330 475C500 525 590 330 470 245C380 180 270 225 260 315"/>
+              <path d="M350 350C480 400 560 300 480 220C375 115 205 245 235 380C270 520 485 555 565 405"/>
+              <path d="M350 350C260 260 205 330 250 420C310 540 490 470 470 345"/>
+            </g>
+            <g class="viz-art viz-art-pulse" fill="none" stroke="url(#nwv-purple-blue)" stroke-width="5">
+              <path d="M0 350H160L205 350L245 270L285 445L325 180L365 520L410 300L455 350H700"/>
+            </g>
+            <g class="viz-art viz-art-rings" fill="none" stroke="url(#nwv-purple-blue)" stroke-width="5">
+              <circle cx="350" cy="350" r="70"/><circle cx="350" cy="350" r="120"/><circle cx="350" cy="350" r="170"/><circle cx="350" cy="350" r="220"/>
+            </g>
+            <g class="viz-art viz-art-mirror">
+              <g class="nwv-bars" transform="translate(0 350)">
+                <rect x="100" y="-55" width="18" height="110" rx="8"/><rect x="140" y="-110" width="18" height="220" rx="8"/><rect x="180" y="-150" width="18" height="300" rx="8"/><rect x="220" y="-80" width="18" height="160" rx="8"/><rect x="260" y="-190" width="18" height="380" rx="8"/><rect x="300" y="-125" width="18" height="250" rx="8"/><rect x="340" y="-165" width="18" height="330" rx="8"/><rect x="380" y="-90" width="18" height="180" rx="8"/><rect x="420" y="-145" width="18" height="290" rx="8"/><rect x="460" y="-70" width="18" height="140" rx="8"/><rect x="500" y="-115" width="18" height="230" rx="8"/>
+              </g>
+            </g>
+            <g class="viz-art viz-art-scope" fill="none" stroke="#45dff3" stroke-width="4">
+              <path d="M0 350C55 350 60 220 115 220S170 480 225 480S280 200 350 200S420 500 475 500S550 225 605 225S650 350 700 350"/>
+            </g>
+            <g class="viz-art viz-art-aurora" fill="none" stroke="url(#nwv-purple-blue)" stroke-width="10">
+              <path d="M0 420C110 250 210 250 310 405S520 550 700 300" opacity=".6"/><path d="M0 470C160 300 225 295 350 445S555 500 700 350" opacity=".42"/>
+            </g>
+            <g class="viz-art viz-art-tunnel" fill="none" stroke="url(#nwv-purple-blue)" stroke-width="4">
+              <ellipse cx="350" cy="350" rx="235" ry="160"/><ellipse cx="350" cy="350" rx="190" ry="130"/><ellipse cx="350" cy="350" rx="145" ry="100"/><ellipse cx="350" cy="350" rx="100" ry="68"/><ellipse cx="350" cy="350" rx="55" ry="38"/>
+            </g>
+          </svg>
           <div class="np-cover-empty" id="home-empty-overlay">
             <span class="np-empty-note">♫</span>
             <strong>Seu som começa aqui</strong>
@@ -420,6 +522,8 @@ function renderVizPicker(){
  const icon=$('#home-viz-icon');
  const icons={waves:'∿',spectrum:'▥',particles:'✣',circular:'◎',vortex:'✺',cube:'◇',pulse:'ϟ',rings:'◉',mirror:'▤',scope:'∿',aurora:'≈',tunnel:'◌'};
  if(icon)icon.textContent=icons[vizStyle]||'∿';
+ const cover=$('#home-cover');
+ if(cover)cover.dataset.vizStyle=vizStyle;
 }
 function setVisualizerStyle(direction){
  const keys=Object.keys(visualizerNames),index=keys.indexOf(vizStyle);
@@ -525,7 +629,7 @@ function prepareIOSMonitor(track,allowStart=false){
    const source=ctx.createMediaElementSource(monitorAudio);
    const analyserNode=ctx.createAnalyser();
    analyserNode.fftSize=2048;
-   analyserNode.smoothingTimeConstant=.82;
+   analyserNode.smoothingTimeConstant=.76;
    const silentGain=ctx.createGain();
    silentGain.gain.value=0;
    source.connect(analyserNode);
@@ -535,7 +639,8 @@ function prepareIOSMonitor(track,allowStart=false){
   }
   analyser=monitorGraph.analyser;
   const sourceUrl=urlFor(track);
-  if(monitorAudio.src!==sourceUrl){
+  const sourceChanged=monitorAudio.src!==sourceUrl;
+  if(sourceChanged){
    monitorAudio.pause();
    monitorAudio.src=sourceUrl;
    monitorAudio.load();
@@ -544,16 +649,17 @@ function prepareIOSMonitor(track,allowStart=false){
      try{monitorAudio.currentTime=media.currentTime||0;}catch(_){}
     }
    },{once:true});
-   if(allowStart&&!document.hidden)monitorAudio.play().catch(error=>console.warn('Visualizador:',error));
-  }else{
+  }else if(monitorAudio.readyState>=1){
    try{
-    if(Math.abs(monitorAudio.currentTime-(media.currentTime||0))>.45)monitorAudio.currentTime=media.currentTime||0;
+    if(Math.abs(monitorAudio.currentTime-(media.currentTime||0))>.35)monitorAudio.currentTime=media.currentTime||0;
    }catch(_){}
   }
+  // Resume the analysis context from the same tap as the audible Play action.
   if(ctx.state!=='running')ctx.resume().catch(error=>console.warn('AudioContext do visualizador:',error));
-  // This duplicate is muted by its zero-gain Web Audio route. The audible
-  // element above remains native and is never sent through the suspended graph.
-  if(!document.hidden&&(allowStart||!media.paused)&&monitorAudio.paused){
+  if(allowStart&&!document.hidden){
+   // This play() is deliberately after the native media element's play() call.
+   monitorAudio.play().catch(error=>console.warn('Visualizador iPhone:',error));
+  }else if(!document.hidden&&!media.paused&&monitorAudio.paused&&monitorAudio.readyState>=2){
    monitorAudio.play().catch(error=>console.warn('Monitor:',error));
   }
  }catch(error){
@@ -615,16 +721,17 @@ function startPlayback(){
  const el=media;if(!currentTrack())return;
  el.muted=false;el.volume=1;
  if(isAppleMobile){
-  // Ask iOS to treat the page as a music player, and keep the audible media
-  // element on the native media pipeline for background playback.
+  // Keep the audible track on iOS's native media pipeline.
   setPlaybackAudioSession();
-  if(el===audio)prepareIOSMonitor(currentTrack(),true);
  }else{
   try{ensureGraph(el);}catch(error){console.warn(error);}
   try{if(ctx&&ctx.state!=='running')ctx.resume().catch(error=>console.warn('AudioContext:',error));}catch(error){console.warn(error);}
  }
  let playPromise;
  try{playPromise=el.play();}catch(error){reportPlayError(error);return;}
+ // Invoke the silent analyser after the native media play request, inside
+ // the same click/tap gesture accepted by iOS.
+ if(isAppleMobile&&el===audio)prepareIOSMonitor(currentTrack(),true);
  Promise.resolve(playPromise).then(()=>{
   if(isAppleMobile&&el===audio)prepareIOSMonitor(currentTrack());
   renderPlayer();updateMediaSession();
@@ -827,14 +934,36 @@ function startVisualizer(){
   }
  };
  const draw=()=>{
-  const canvasesNow=canvases();
+  const now=performance.now();
   let active=!!(analyser&&currentTrack()&&!media.paused&&media.readyState>=2);
   const count=analyser?analyser.frequencyBinCount:128;
   const frequency=new Uint8Array(count),waveform=new Uint8Array(256);
-  if(analyser&&active){analyser.getByteFrequencyData(frequency);analyser.getByteTimeDomainData(waveform);}
-  else{frequency.fill(0);waveform.fill(128);}
-  const now=performance.now();
-  canvasesNow.forEach(canvas=>drawCanvas(canvas,frequency,waveform,now,active));
+  let level=0;
+  try{
+   if(analyser&&active){
+    analyser.getByteFrequencyData(frequency);
+    analyser.getByteTimeDomainData(waveform);
+    level=frequency.reduce((sum,value)=>sum+value,0)/(frequency.length*255);
+   }else{
+    frequency.fill(0);waveform.fill(128);
+    level=.035+.035*(.5+.5*Math.sin(now/390));
+   }
+  }catch(error){
+   active=false;level=.04+.03*(.5+.5*Math.sin(now/390));
+   frequency.fill(0);waveform.fill(128);
+   console.warn('Leitura do visualizador:',error);
+  }
+  const cover=$('#home-cover');
+  if(cover){
+   cover.dataset.vizStyle=vizStyle;
+   const pulse=cover.querySelector('.viz-art');
+   if(pulse)pulse.style.transform='scale('+(0.94+Math.min(1,level*2.1)*.12)+')';
+   cover.style.setProperty('--viz-audio-level',String(level));
+  }
+  canvases().forEach(canvas=>{
+   try{drawCanvas(canvas,frequency,waveform,now,active);}
+   catch(error){console.warn('Renderização Canvas Nexus:',error);}
+  });
   raf=requestAnimationFrame(draw);
  };
  draw();
