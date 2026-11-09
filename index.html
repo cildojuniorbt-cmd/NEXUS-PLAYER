@@ -193,6 +193,26 @@ body.home-mode .np-home-controls{margin:15px 0 14px}
  .np-cover-area{width:min(82vw,440px,43svh,43dvh)}
  .np-cover-empty strong{font-size:15px}
 }
+/* Reference-style visualizer selector inside the cover */
+.np-now-cover{position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 52%,#180d36 0,#080817 58%,#04040c 100%)!important}
+#home-visualizer{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+.np-viz-switcher{position:absolute;z-index:4;left:12px;right:12px;bottom:12px;height:58px;display:grid;grid-template-columns:48px minmax(0,1fr) 48px;align-items:center;border:1px solid #5b447b;border-radius:999px;background:linear-gradient(120deg,rgba(17,15,39,.96),rgba(8,9,25,.96));box-shadow:0 0 18px #8d33ff2b,inset 0 0 14px #7444a51c;backdrop-filter:blur(15px)}
+.np-viz-switcher>button{height:100%;border:0;background:transparent;color:#f6edff;font-size:40px;font-weight:300;line-height:1}
+.np-viz-switcher>button:first-child{border-right:1px solid #413354;border-radius:999px 0 0 999px}
+.np-viz-switcher>button:last-child{border-left:1px solid #413354;border-radius:0 999px 999px 0}
+.np-viz-switcher>button:active{background:#b44dff2a}
+.np-viz-current{min-width:0;display:flex;align-items:center;justify-content:center;gap:13px;padding:0 7px}
+.np-viz-current span{font-size:31px;line-height:1;color:#c45aff;text-shadow:0 0 14px #b143ff}
+.np-viz-current strong{font-size:clamp(12px,3.6vw,17px);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f7f0ff}
+.np-cover-empty{z-index:3;gap:8px;background:linear-gradient(180deg,rgba(5,5,16,.08),rgba(5,5,16,.64))}
+.np-cover-empty[hidden]{display:none!important}
+@media(max-width:780px){
+ .np-viz-switcher{left:8px;right:8px;bottom:8px;height:51px;grid-template-columns:42px minmax(0,1fr) 42px}
+ .np-viz-switcher>button{font-size:35px}
+ .np-viz-current{gap:9px}
+ .np-viz-current span{font-size:27px}
+ .np-viz-current strong{font-size:clamp(11px,3.5vw,15px)}
+}
 </style>
 </head>
 <body>
@@ -243,15 +263,22 @@ body.home-mode .np-home-controls{margin:15px 0 14px}
       <div class="np-cover-area">
         <div class="np-cover-glow"></div>
         <div class="np-now-cover" id="home-cover">
-          <canvas id="home-visualizer" aria-label="Visualizador de áudio em tempo real"></canvas>
+          <canvas id="home-visualizer" aria-label="Ondas 3D que reagem à música"></canvas>
           <div class="np-cover-empty" id="home-empty-overlay">
             <span class="np-empty-note">♫</span>
             <strong>Seu som começa aqui</strong>
             <small>Escolha uma música para visualizar</small>
             <button type="button" id="home-import">＋ Adicionar músicas</button>
           </div>
+          <div class="np-viz-switcher" aria-label="Seletor de visualizador">
+            <button id="home-viz-prev" type="button" aria-label="Visualizador anterior">‹</button>
+            <div class="np-viz-current" aria-live="polite">
+              <span id="home-viz-icon" aria-hidden="true">∿</span>
+              <strong id="home-viz-current">Visualizador Ondas 3D</strong>
+            </div>
+            <button id="home-viz-next" type="button" aria-label="Próximo visualizador">›</button>
+          </div>
         </div>
-        <div class="np-cover-spectrum" aria-hidden="true"></div>
       </div>
       <div class="np-now-meta">
         <div class="np-now-copy">
@@ -271,28 +298,7 @@ body.home-mode .np-home-controls{margin:15px 0 14px}
         <button id="home-next" type="button" aria-label="Próxima faixa">▶|</button>
         <button id="home-repeat" type="button" aria-label="Repetir">↻</button>
       </div>
-      <section class="np-visualizer-section" aria-label="Visualizadores de música">
-        <div class="np-viz-heading">
-          <div><strong>Visualizadores <span>(12 estilos)</span></strong><small id="home-viz-current">Ondas 3D</small></div>
-          <button class="np-viz-full" data-view="player" type="button">Tela cheia ↗</button>
-        </div>
-        <div class="np-viz-options" id="home-viz-options" aria-label="Escolher visualizador">
-          <button class="np-viz-option active" data-viz="waves" aria-pressed="true"><span class="np-viz-symbol waves">∿</span><b>Ondas 3D</b></button>
-          <button class="np-viz-option" data-viz="spectrum" aria-pressed="false"><span class="np-viz-symbol spectrum">▥</span><b>Espectro</b></button>
-          <button class="np-viz-option" data-viz="particles" aria-pressed="false"><span class="np-viz-symbol particles">✣</span><b>Partículas</b></button>
-          <button class="np-viz-option" data-viz="circular" aria-pressed="false"><span class="np-viz-symbol circular">◎</span><b>Circular</b></button>
-          <button class="np-viz-option" data-viz="vortex" aria-pressed="false"><span class="np-viz-symbol vortex">✺</span><b>Vórtice</b></button>
-          <button class="np-viz-option" data-viz="cube" aria-pressed="false"><span class="np-viz-symbol cube">◇</span><b>Cubo</b></button>
-          <button class="np-viz-option" data-viz="pulse" aria-pressed="false"><span class="np-viz-symbol pulse">ϟ</span><b>Pulso</b></button>
-          <button class="np-viz-option" data-viz="rings" aria-pressed="false"><span class="np-viz-symbol rings">◉</span><b>Anéis</b></button>
-          <button class="np-viz-option" data-viz="mirror" aria-pressed="false"><span class="np-viz-symbol mirror">▤</span><b>Espelhado</b></button>
-          <button class="np-viz-option" data-viz="scope" aria-pressed="false"><span class="np-viz-symbol scope">∿</span><b>Osciloscópio</b></button>
-          <button class="np-viz-option" data-viz="aurora" aria-pressed="false"><span class="np-viz-symbol aurora">≈</span><b>Aurora</b></button>
-          <button class="np-viz-option" data-viz="tunnel" aria-pressed="false"><span class="np-viz-symbol tunnel">◌</span><b>Túnel</b></button>
-        </div>
-        <p class="np-viz-hint" id="home-viz-hint">O visual acompanha as frequências da música em reprodução.</p>
-      </section>
-      
+  
     </div>
   </section>
 
@@ -406,15 +412,17 @@ function renderHome(){const recent=[...tracks].sort((a,b)=>(b.addedAt||0)-(a.add
 function renderLibrary(){const q=$('#search').value.toLowerCase();const arr=tracks.filter(t=>(libraryFilter==='all'||(libraryFilter==='audio'?!isVideo(t):isVideo(t)))&&(t.name+' '+(t.artist||'')+' '+(t.album||'')).toLowerCase().includes(q));$('#library-count').textContent=tracks.length+' arquivos neste dispositivo';listInto('#library-list',arr,{add:true,empty:'Importe MP3, WAV, FLAC, M4A, MP4 e outros formatos suportados.'});document.querySelectorAll('[data-library-filter]').forEach(b=>b.classList.toggle('active',b.dataset.libraryFilter===libraryFilter));}
 function renderPlaylists(){const p=playlists.find(x=>x.id===selectedPlaylist);$('#playlist-grid').innerHTML=playlists.length?playlists.map(playlistCard).join(''):'<div class="empty" style="grid-column:1/-1"><b>Suas playlists começam aqui</b>Crie uma playlist para organizar suas músicas.</div>';$('#playlist-detail').hidden=!p;if(!p)return;$('#selected-playlist-name').textContent=p.name;const items=p.trackIds.map(key=>tracks.find(t=>t.id===key)).filter(Boolean);$('#selected-playlist-count').textContent=items.length+' faixas';listInto('#playlist-track-list',items,{remove:true,empty:'Adicione músicas usando o seletor abaixo.'});const available=tracks.filter(t=>!isVideo(t)&&!p.trackIds.includes(t.id));$('#playlist-add-track').innerHTML='<option value="">Escolher música da biblioteca</option>'+available.map(t=>'<option value="'+esc(t.id)+'">'+esc(t.name)+'</option>').join('');}
 function renderVizPicker(){
- document.querySelectorAll('[data-viz]').forEach(button=>{
-  const active=button.dataset.viz===vizStyle;
-  button.classList.toggle('active',active);
-  button.setAttribute('aria-pressed',active?'true':'false');
- });
  const label=$('#home-viz-current');
- if(label)label.textContent=visualizerNames[vizStyle]||'Ondas 3D';
- const hint=$('#home-viz-hint');
- if(hint)hint.textContent=currentTrack()&&!media.paused?'Visualizando agora: '+(currentTrack().name||'música atual'):'Dê play em uma música para ativar a resposta ao áudio.';
+ if(label)label.textContent='Visualizador '+(visualizerNames[vizStyle]||'Ondas 3D');
+ const icon=$('#home-viz-icon');
+ const icons={waves:'∿',spectrum:'▥',particles:'✣',circular:'◎',vortex:'✺',cube:'◇',pulse:'ϟ',rings:'◉',mirror:'▤',scope:'∿',aurora:'≈',tunnel:'◌'};
+ if(icon)icon.textContent=icons[vizStyle]||'∿';
+}
+function setVisualizerStyle(direction){
+ const keys=Object.keys(visualizerNames),index=keys.indexOf(vizStyle);
+ vizStyle=keys[(index+(direction==='previous'?-1:1)+keys.length)%keys.length];
+ try{localStorage.setItem('nexus-viz-style',vizStyle);}catch(_){}
+ renderVizPicker();
 }
 function renderPlayer(){
  renderVizPicker();
@@ -666,12 +674,8 @@ function updateDuration(el){if(el!==media)return;$('#mini-duration').textContent
 [audio,video].forEach(el=>{el.volume=1;el.muted=false;el.addEventListener('timeupdate',()=>updateProgress(el));el.addEventListener('loadedmetadata',()=>updateDuration(el));el.addEventListener('play',renderPlayer);el.addEventListener('pause',renderPlayer);el.addEventListener('ended',()=>{if(el===media&&!repeat)next();});el.addEventListener('error',()=>{if(el===media&&el.currentSrc)notice('Esse formato não é compatível com o navegador.');});});
 function seek(v){if(Number.isFinite(media.duration)&&media.duration>0)media.currentTime=media.duration*Number(v)/1000;}
 $('#mini-seek').addEventListener('input',e=>seek(e.target.value));$('#home-seek').addEventListener('input',e=>seek(e.target.value));
-document.querySelectorAll('[data-viz]').forEach(button=>button.addEventListener('click',()=>{
- const next=button.dataset.viz;if(!visualizerNames[next])return;
- vizStyle=next;
- try{localStorage.setItem('nexus-viz-style',vizStyle);}catch(_){}
- renderVizPicker();
-}));
+$('#home-viz-prev').addEventListener('click',()=>setVisualizerStyle('previous'));
+$('#home-viz-next').addEventListener('click',()=>setVisualizerStyle('next'));
 $('#add').addEventListener('click',()=>picker.click());$('#import-more').addEventListener('click',()=>picker.click());
 picker.addEventListener('change',()=>{importFiles(picker.files);picker.value='';});
 $('#home-import').addEventListener('click',()=>picker.click());$('#home-play').addEventListener('click',toggle);$('#home-prev').addEventListener('click',prev);$('#home-next').addEventListener('click',next);$('#home-shuffle').addEventListener('click',()=>{shuffle=!shuffle;renderPlayer();notice(shuffle?'Aleatório ativado':'Aleatório desativado');});$('#home-repeat').addEventListener('click',()=>{repeat=!repeat;audio.loop=video.loop=repeat;renderPlayer();notice(repeat?'Repetição ativada':'Repetição desativada');});$('#home-favorite').addEventListener('click',()=>{if(currentTrack())favorite(currentTrack().id);});
