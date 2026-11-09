@@ -1,6 +1,6 @@
 {
   "name": "Nexus Player",
-  "short_name": "Nexus Player",
+  "short_name": "Nexus",
   "description": "Seu espaço, seu som.",
   "lang": "pt-BR",
   "start_url": "/NEXUS-PLAYER/",
@@ -10,7 +10,7 @@
   "theme_color": "#080814",
   "icons": [
     {
-      "src": "/NEXUS-PLAYER/icons/apple-touch-icon.png?v=2",
+      "src": "/NEXUS-PLAYER/icons/nexus-touch-v3.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

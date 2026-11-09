@@ -1,5 +1,5 @@
-const CACHE='nexus-player-v6';
-const FILES=['./','./index.html','./manifest.webmanifest','./apple-touch-icon.png','./assets/nexus-icon.svg','./icons/apple-touch-icon.png'];
+const CACHE='nexus-player-v8';
+const FILES=['./','./index.html','./manifest.webmanifest','/NEXUS-PLAYER/icons/nexus-touch-v3.png','/NEXUS-PLAYER/assets/nexus-icon.svg'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()));
 });
