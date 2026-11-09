@@ -3,20 +3,20 @@
   "short_name": "Nexus Player",
   "description": "Seu espaço, seu som.",
   "lang": "pt-BR",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/NEXUS-PLAYER/",
+  "scope": "/NEXUS-PLAYER/",
   "display": "standalone",
   "background_color": "#080814",
   "theme_color": "#080814",
   "icons": [
     {
-      "src": "./apple-touch-icon.png",
+      "src": "/NEXUS-PLAYER/icons/apple-touch-icon.png?v=2",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./assets/nexus-icon.svg",
+      "src": "/NEXUS-PLAYER/assets/nexus-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
