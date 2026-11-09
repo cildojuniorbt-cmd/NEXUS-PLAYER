@@ -515,7 +515,7 @@ function setPlaybackAudioSession(){
   if(navigator.audioSession)navigator.audioSession.type='playback';
  }catch(error){console.warn('AudioSession:',error);}
 }
-function prepareIOSMonitor(track){
+function prepareIOSMonitor(track,allowStart=false){
  if(!isAppleMobile||!track||isVideo(track))return;
  const AudioContextClass=window.AudioContext||window.webkitAudioContext;
  if(!AudioContextClass)return;
@@ -542,9 +542,9 @@ function prepareIOSMonitor(track){
    monitorAudio.addEventListener('loadedmetadata',()=>{
     if(currentTrack()&&urlFor(currentTrack())===sourceUrl){
      try{monitorAudio.currentTime=media.currentTime||0;}catch(_){}
-     if(!document.hidden&&!media.paused)monitorAudio.play().catch(error=>console.warn('Visualizador:',error));
     }
    },{once:true});
+   if(allowStart&&!document.hidden)monitorAudio.play().catch(error=>console.warn('Visualizador:',error));
   }else{
    try{
     if(Math.abs(monitorAudio.currentTime-(media.currentTime||0))>.45)monitorAudio.currentTime=media.currentTime||0;
@@ -553,9 +553,8 @@ function prepareIOSMonitor(track){
   if(ctx.state!=='running')ctx.resume().catch(error=>console.warn('AudioContext do visualizador:',error));
   // This duplicate is muted by its zero-gain Web Audio route. The audible
   // element above remains native and is never sent through the suspended graph.
-  if(!document.hidden&&!media.paused){
-   if(monitorAudio.readyState>=1)monitorAudio.play().catch(error=>console.warn('Monitor:',error));
-   else monitorAudio.addEventListener('canplay',()=>monitorAudio.play().catch(()=>{}),{once:true});
+  if(!document.hidden&&(allowStart||!media.paused)&&monitorAudio.paused){
+   monitorAudio.play().catch(error=>console.warn('Monitor:',error));
   }
  }catch(error){
   console.warn('Monitor de visualização indisponível:',error);
@@ -619,7 +618,7 @@ function startPlayback(){
   // Ask iOS to treat the page as a music player, and keep the audible media
   // element on the native media pipeline for background playback.
   setPlaybackAudioSession();
-  if(el===audio)prepareIOSMonitor(currentTrack());
+  if(el===audio)prepareIOSMonitor(currentTrack(),true);
  }else{
   try{ensureGraph(el);}catch(error){console.warn(error);}
   try{if(ctx&&ctx.state!=='running')ctx.resume().catch(error=>console.warn('AudioContext:',error));}catch(error){console.warn(error);}
@@ -721,11 +720,67 @@ function startVisualizer(){
     break;
    }
    case 'waves':{
-    for(let layer=0;layer<5;layer++){
-     const points=[],amp=(h*.10+get(4+layer*7)*h*.22)*(1-layer*.09),phase=t*(.85+layer*.14)+layer*.85;
-     for(let i=0;i<=90;i++){const x=w*i/90;const f=i/90;const v=waveformValue(i*2);const y=cy+Math.sin(f* Math.PI*4+phase)*amp+Math.sin(f*Math.PI*8-phase*.7)*amp*.19+v*amp*.24+ (layer-2)*h*.075;points.push([x,y]);}
-     c.globalAlpha=.82-layer*.12;line(points,[pink,purple,blue,cyan,pink][layer],1.8,10);
-    }c.globalAlpha=1;break;
+    const baseY=cy+h*.015;
+    const ampBase=h*(active?.135:.105);
+    // Perspectiva em malha, semelhante a um equalizador 3D.
+    c.save();
+    c.globalAlpha=.19;
+    for(let row=0;row<9;row++){
+     const y=baseY+h*(.06+row*.047);
+     c.beginPath();
+     for(let col=0;col<=70;col++){
+      const x=w*col/70;
+      const yy=y+Math.sin((col/70)*Math.PI*3+t*.46+row*.17)*h*.012;
+      if(col===0)c.moveTo(x,yy);else c.lineTo(x,yy);
+     }
+     c.strokeStyle=row%2?'#3158a0':'#7b37ad';
+     c.lineWidth=.65;c.stroke();
+    }
+    for(let col=0;col<=36;col++){
+     const x=w*col/36;
+     c.beginPath();
+     c.moveTo(cx+(x-cx)*.12,baseY-h*.2);
+     c.lineTo(x,h*.9);
+     c.strokeStyle=col%4===0?'#9453d0':'#294b87';
+     c.lineWidth=.65;c.stroke();
+    }
+    c.restore();
+    for(let layer=3;layer>=0;layer--){
+     const pts=[];
+     const freq=1.42+layer*.12;
+     const phase=t*(.78+layer*.09)+layer*.58;
+     const height=ampBase*(1-layer*.16)*(1+beat*.65);
+     for(let i=0;i<=190;i++){
+      const f=i/190,x=f*w;
+      const sample=active?waveformValue(i*1.35):0;
+      const crest=Math.sin(f*Math.PI*2*freq+phase);
+      const fine=Math.sin(f*Math.PI*4.2-phase*.43)*.22;
+      const ripple=Math.sin(f*Math.PI*7+t*1.18+layer*.7)*.045;
+      const y=baseY+crest*height+fine*height+sample*height*.32+ripple*h;
+      pts.push([x,y]);
+     }
+     c.globalAlpha=.14+layer*.035;
+     for(let i=0;i<pts.length;i+=4){
+      const [x,y]=pts[i];
+      c.beginPath();c.moveTo(x,y);
+      c.lineTo(x,Math.min(h*.9,y+h*(.12+layer*.015)));
+      c.strokeStyle=layer%2?cyan:purple;
+      c.lineWidth=.6;c.stroke();
+     }
+     c.globalAlpha=.76-layer*.13;
+     line(pts,gradient(0,baseY,w,baseY),layer===0?2.8:1.6,layer===0?20:10);
+    }
+    c.globalAlpha=1;
+    for(let i=0;i<32;i++){
+     const f=i/31,x=f*w;
+     const y=baseY+Math.sin(f*Math.PI*2*1.42+t*.78)*ampBase*(1+beat*.65);
+     if(i%2===0){
+      c.beginPath();c.arc(x,y,1.1+get(i*2)*2.7,0,Math.PI*2);
+      c.fillStyle=i%4===0?cyan:pink;
+      glow(c.fillStyle,8+beat*10);c.fill();clearGlow();
+     }
+    }
+    break;
    }
    case 'particles':{
     const count=38;
