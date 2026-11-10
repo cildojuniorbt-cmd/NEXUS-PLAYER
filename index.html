@@ -501,7 +501,7 @@ const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const monitorAudio=new Audio();monitorAudio.preload='auto';monitorAudio.controls=false;monitorAudio.playsInline=true;
 let monitorGraph=null,lastMonitorSync=0,mediaSessionHandlersReady=false;
-const DB='nexus-player-db',DBV=2,frequencies=[60,150,400,1000,2500,6000,12000],freqLabels=['60','150','400','1k','2.5k','6k','12k'],presets={Flat:[0,0,0,0,0,0,0],Rock:[5,3,-1,1,3,4,4],Pop:[-1,2,4,3,0,-1,1],Indie:[3,1,0,2,3,2,1],Acoustic:[2,2,1,0,2,3,2]};
+const DB='nexus-player-db',DBV=3,frequencies=[60,150,400,1000,2500,6000,12000],freqLabels=['60','150','400','1k','2.5k','6k','12k'],presets={Flat:[0,0,0,0,0,0,0],Rock:[5,3,-1,1,3,4,4],Pop:[-1,2,4,3,0,-1,1],Indie:[3,1,0,2,3,2,1],Acoustic:[2,2,1,0,2,3,2]};
 let db,tracks=[],playlists=[],current=-1,media=audio,view='home',libraryFilter='all',genre='all',selectedPlaylist=null,queue=null,shuffle=false,repeat=false,ctx=null,graphs=new WeakMap(),graphList=[],analyser=null,raf=0,urls=new Map(),toastTimer,vizStyle='waves';
 let eq={enabled:true,bands:[0,0,0,0,0,0,0],bass:0,treble:0,virtualizer:0,preset:'Flat'};
 try{const saved=JSON.parse(localStorage.getItem('nexus-eq')||'null');if(saved)eq={...eq,...saved};}catch(_){}
@@ -517,15 +517,14 @@ function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function openDB(){
  return new Promise((resolve,reject)=>{
   const request=indexedDB.open(DB,DBV);
-  request.onupgradeneeded=event=>{
+  request.onupgradeneeded=()=>{
    const database=request.result;
-   // Create only missing stores; never delete or recreate existing user data.
    if(!database.objectStoreNames.contains('tracks'))database.createObjectStore('tracks',{keyPath:'id'});
    if(!database.objectStoreNames.contains('playlists'))database.createObjectStore('playlists',{keyPath:'id'});
   };
   request.onsuccess=()=>{
    const database=request.result;
-   database.onversionchange=()=>database.close();
+   database.onversionchange=()=>{database.close();if(db===database)db=null;};
    resolve(database);
   };
   request.onerror=()=>reject(request.error||new Error('Não foi possível abrir o banco local.'));
@@ -547,6 +546,55 @@ function put(name,value){
  });
 }
 function del(name,key){return new Promise((res,rej)=>{const tx=db.transaction(name,'readwrite');tx.objectStore(name).delete(key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);});}
+const PLAYLIST_CACHE_KEY='nexus-player-playlists-cache-v1';
+function normalizePlaylists(items){
+ return (Array.isArray(items)?items:[]).filter(item=>item&&item.id).map(item=>({
+  id:String(item.id),name:String(item.name||'Minha playlist').slice(0,48),
+  trackIds:Array.isArray(item.trackIds)?item.trackIds.map(String):[],
+  createdAt:Number(item.createdAt)||Date.now()
+ }));
+}
+function readPlaylistCache(){
+ try{
+  const raw=localStorage.getItem(PLAYLIST_CACHE_KEY);
+  if(raw===null)return null;
+  const value=JSON.parse(raw);
+  return Array.isArray(value)?normalizePlaylists(value):null;
+ }catch(error){console.warn('Cache local de playlists indisponível:',error);return null;}
+}
+function writePlaylistCache(items){localStorage.setItem(PLAYLIST_CACHE_KEY,JSON.stringify(normalizePlaylists(items)));}
+async function loadPlaylists(){
+ const cached=readPlaylistCache();
+ if(cached!==null){playlists=cached;return playlists;}
+ try{
+  playlists=normalizePlaylists(await all('playlists'));
+  try{writePlaylistCache(playlists);}catch(error){console.warn('Não foi possível espelhar playlists:',error);}
+ }catch(error){console.warn('Falha ao ler playlists no IndexedDB:',error);playlists=[];}
+ return playlists;
+}
+async function savePlaylistRecord(record){
+ const normalized=normalizePlaylists([record])[0];
+ if(!normalized)throw new Error('Dados da playlist inválidos.');
+ const next=normalizePlaylists([...playlists.filter(item=>item.id!==normalized.id),normalized]);
+ let localSaved=false,indexedDBSaved=false,storageError=null;
+ playlists=next;
+ try{writePlaylistCache(next);localSaved=true;}catch(error){storageError=error;console.warn('Falha no cache local:',error);}
+ try{await put('playlists',normalized);indexedDBSaved=true;}catch(error){storageError=storageError||error;console.warn('Falha no IndexedDB:',error);}
+ if(!localSaved&&!indexedDBSaved){
+  const detail=storageError&&storageError.name?storageError.name+': '+storageError.message:'armazenamento indisponível';
+  throw new Error('Não foi possível gravar a playlist ('+detail+').');
+ }
+ return {localSaved,indexedDBSaved};
+}
+async function deletePlaylistRecord(playlistId){
+ const next=playlists.filter(item=>item.id!==playlistId);
+ let localSaved=false,indexedDBSaved=false;
+ playlists=next;
+ try{writePlaylistCache(next);localSaved=true;}catch(error){console.warn('Falha ao atualizar cache local:',error);}
+ try{await del('playlists',playlistId);indexedDBSaved=true;}catch(error){console.warn('Falha ao excluir do IndexedDB:',error);}
+ if(!localSaved&&!indexedDBSaved)throw new Error('Não foi possível excluir a playlist.');
+ return {localSaved,indexedDBSaved};
+}
 function urlFor(t,cover=false){const key=t.id+(cover?':cover':'');const blob=cover?t.coverBlob:t.blob;if(!blob)return'';if(!urls.has(key))urls.set(key,URL.createObjectURL(blob));return urls.get(key);}
 function imageMarkup(t){return t.coverBlob?'<img src="'+urlFor(t,true)+'" alt="Capa de '+esc(t.name)+'">':'<span class="cover-symbol">N</span><span class="cover-caption">'+esc(t.artist||'Nexus Player')+'</span>';}
 function go(next){view=next;document.body.classList.toggle('home-mode',next==='home');document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+next));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===next||((next==='favorites'||next==='explore')&&b.dataset.view==='more')));renderAll();if(next==='player')startVisualizer();}
@@ -1103,47 +1151,52 @@ $('#playlist-form').addEventListener('submit',async event=>{
  const submitButton=$('#playlist-form button[type="submit"]');
  const name=input.value.trim().slice(0,48);
  if(!name){input.focus();return;}
- if(!db){notice('O banco local ainda está carregando. Tente novamente.');return;}
  submitButton.disabled=true;
  try{
   const playlist={id:id(),name,trackIds:[],createdAt:Date.now()};
-  await put('playlists',playlist);
-  // Re-read persisted records instead of relying only on the in-memory array.
-  playlists=await all('playlists');
-  selectedPlaylist=playlist.id;
-  input.value='';
-  go('playlists');
-  notice('Playlist "'+name+'" criada e salva.');
+  const saved=await savePlaylistRecord(playlist);
+  selectedPlaylist=playlist.id;input.value='';go('playlists');
+  notice(saved.indexedDBSaved?'Playlist "'+name+'" criada e salva.':'Playlist "'+name+'" salva neste navegador.');
  }catch(error){
   console.error('Nexus Player: falha ao criar playlist',error);
-  notice('Não foi possível salvar a playlist. Atualize a página e tente novamente.');
- }finally{
-  submitButton.disabled=false;
- }
+  notice(error&&error.message?error.message:'Não foi possível salvar a playlist. Verifique o armazenamento.');
+ }finally{submitButton.disabled=false;}
 });
 $('#playlist-grid').addEventListener('click',e=>{const b=e.target.closest('[data-open-playlist]');if(b){selectedPlaylist=b.dataset.openPlaylist;renderPlaylists();}});
-$('#add-to-selected').addEventListener('click',()=>{const trackId=$('#playlist-add-track').value;const p=playlists.find(x=>x.id===selectedPlaylist);if(!p||!trackId)return;if(p.trackIds.includes(trackId)){notice('Essa faixa já está na playlist.');return;}p.trackIds.push(trackId);put('playlists',p).then(()=>{renderPlaylists();notice('Música adicionada.');});});
-$('#rename-playlist').addEventListener('click',()=>{const p=playlists.find(x=>x.id===selectedPlaylist);if(!p)return;const n=prompt('Novo nome:',p.name);if(n&&n.trim()){p.name=n.trim().slice(0,48);put('playlists',p).then(renderAll);}});
-$('#delete-playlist').addEventListener('click',()=>{const p=playlists.find(x=>x.id===selectedPlaylist);if(!p||!confirm('Excluir playlist? As músicas continuarão na biblioteca.'))return;del('playlists',p.id).then(()=>{playlists=playlists.filter(x=>x.id!==p.id);selectedPlaylist=null;renderAll();});});
-$('#playlist-track-list').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const p=playlists.find(x=>x.id===selectedPlaylist);if(!p)return;p.trackIds=p.trackIds.filter(x=>x!==b.dataset.remove);put('playlists',p).then(renderPlaylists);});
+$('#add-to-selected').addEventListener('click',()=>{const trackId=$('#playlist-add-track').value;const p=playlists.find(x=>x.id===selectedPlaylist);if(!p||!trackId)return;if(p.trackIds.includes(trackId)){notice('Essa faixa já está na playlist.');return;}p.trackIds.push(trackId);savePlaylistRecord(p).then(()=>{renderPlaylists();notice('Música adicionada.');}).catch(error=>{console.error(error);notice(error.message||'Não foi possível adicionar a música.');});});
+$('#rename-playlist').addEventListener('click',()=>{const p=playlists.find(x=>x.id===selectedPlaylist);if(!p)return;const n=prompt('Novo nome:',p.name);if(n&&n.trim()){p.name=n.trim().slice(0,48);savePlaylistRecord(p).then(renderAll).catch(error=>{console.error(error);notice(error.message||'Não foi possível renomear.');});}});
+$('#delete-playlist').addEventListener('click',async()=>{
+ const p=playlists.find(x=>x.id===selectedPlaylist);
+ if(!p||!confirm('Excluir playlist? As músicas continuarão na biblioteca.'))return;
+ try{await deletePlaylistRecord(p.id);selectedPlaylist=null;renderAll();notice('Playlist excluída.');}
+ catch(error){console.error(error);notice(error.message||'Não foi possível excluir a playlist.');}
+});
+$('#playlist-track-list').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const p=playlists.find(x=>x.id===selectedPlaylist);if(!p)return;p.trackIds=p.trackIds.filter(x=>x!==b.dataset.remove);savePlaylistRecord(p).then(renderPlaylists).catch(error=>{console.error(error);notice(error.message||'Não foi possível atualizar a playlist.');});});
 
 
 
 $('#genre-pills').addEventListener('click',e=>{const b=e.target.closest('[data-genre]');if(!b)return;genre=b.dataset.genre;document.querySelectorAll('[data-genre]').forEach(x=>x.classList.toggle('active',x===b));renderExplore();});
 function renderExplore(){const q=$('#search').value.toLowerCase();const arr=tracks.filter(t=>!isVideo(t)&&(t.name+' '+(t.artist||'')+' '+(t.genre||'')).toLowerCase().includes(q)&&(genre==='all'||(t.genre||'').toLowerCase()===genre.toLowerCase()));listInto('#explore-list',arr,{empty:'Adicione músicas e edite o estilo nas informações da faixa para explorar por gênero.'});}
-document.body.addEventListener('click',e=>{const demoAlbum=e.target.closest('[data-demo-album]');if(demoAlbum){notice('Prévia visual de '+demoAlbum.dataset.demoAlbum+'. Importe o áudio para reproduzir.');go('library');return;}const demoPlaylist=e.target.closest('[data-demo-playlist]');if(demoPlaylist){$('#playlist-name').value=demoPlaylist.dataset.demoPlaylist;go('playlists');notice('Nome sugerido preenchido. Crie a playlist para começar.');return;}const remove=e.target.closest('[data-remove]');if(remove){e.stopPropagation();const p=playlists.find(x=>x.id===selectedPlaylist);if(p){p.trackIds=p.trackIds.filter(x=>x!==remove.dataset.remove);put('playlists',p).then(()=>{renderAll();notice('Faixa removida da playlist.');});}return;}const fav=e.target.closest('[data-fav]');if(fav){e.stopPropagation();favorite(fav.dataset.fav);return;}const add=e.target.closest('[data-add]');if(add){e.stopPropagation();if(!playlists.length){notice('Crie uma playlist antes de adicionar faixas.');go('playlists');return;}const pName=prompt('Digite o nome exato da playlist:\\n'+playlists.map(p=>p.name).join('\\n'));const p=playlists.find(x=>x.name.toLowerCase()===String(pName||'').toLowerCase());if(!p){notice('Playlist não encontrada.');return;}const idValue=add.dataset.add;p.trackIds.includes(idValue)?notice('Já está nessa playlist.'): (p.trackIds.push(idValue),put('playlists',p).then(renderAll));return;}const more=e.target.closest('[data-more]');if(more){e.stopPropagation();const t=tracks.find(x=>x.id===more.dataset.more);if(t)editTrack(t.id);return;}const play=e.target.closest('[data-play]');if(play){if(e.target.closest('button[data-fav],button[data-add],button[data-more]'))return;selectTrack(play.dataset.play);}});
+document.body.addEventListener('click',e=>{const demoAlbum=e.target.closest('[data-demo-album]');if(demoAlbum){notice('Prévia visual de '+demoAlbum.dataset.demoAlbum+'. Importe o áudio para reproduzir.');go('library');return;}const demoPlaylist=e.target.closest('[data-demo-playlist]');if(demoPlaylist){$('#playlist-name').value=demoPlaylist.dataset.demoPlaylist;go('playlists');notice('Nome sugerido preenchido. Crie a playlist para começar.');return;}const remove=e.target.closest('[data-remove]');if(remove){e.stopPropagation();const p=playlists.find(x=>x.id===selectedPlaylist);if(p){p.trackIds=p.trackIds.filter(x=>x!==remove.dataset.remove);savePlaylistRecord(p).then(()=>{renderAll();notice('Faixa removida da playlist.');}).catch(error=>{console.error(error);notice(error.message||'Não foi possível remover a faixa.');});}return;}const fav=e.target.closest('[data-fav]');if(fav){e.stopPropagation();favorite(fav.dataset.fav);return;}const add=e.target.closest('[data-add]');if(add){e.stopPropagation();if(!playlists.length){notice('Crie uma playlist antes de adicionar faixas.');go('playlists');return;}const pName=prompt('Digite o nome exato da playlist:\\n'+playlists.map(p=>p.name).join('\\n'));const p=playlists.find(x=>x.name.toLowerCase()===String(pName||'').toLowerCase());if(!p){notice('Playlist não encontrada.');return;}const idValue=add.dataset.add;p.trackIds.includes(idValue)?notice('Já está nessa playlist.'): (p.trackIds.push(idValue),put('playlists',p).then(renderAll));return;}const more=e.target.closest('[data-more]');if(more){e.stopPropagation();const t=tracks.find(x=>x.id===more.dataset.more);if(t)editTrack(t.id);return;}const play=e.target.closest('[data-play]');if(play){if(e.target.closest('button[data-fav],button[data-add],button[data-more]'))return;selectTrack(play.dataset.play);}});
 document.body.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-play]')){e.preventDefault();selectTrack(e.target.dataset.play);}});
 function mediaSession(t){if(!('mediaSession'in navigator)||!t)return;try{navigator.mediaSession.metadata=new MediaMetadata({title:t.name,artist:t.artist||'Nexus Player',album:t.album||'Biblioteca'});navigator.mediaSession.setActionHandler('play',toggle);navigator.mediaSession.setActionHandler('pause',()=>media.pause());navigator.mediaSession.setActionHandler('previoustrack',prev);navigator.mediaSession.setActionHandler('nexttrack',next);}catch(_){}}
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search').focus();}if(e.code==='Space'&&!['INPUT','TEXTAREA','BUTTON','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();toggle();}});
-async function boot(){document.body.classList.add('home-mode');try{db=await openDB();tracks=await all('tracks');playlists=await all('playlists');}catch(e){console.error(e);notice('Armazenamento local indisponível.');}renderAll();startVisualizer();}
+async function boot(){
+ document.body.classList.add('home-mode');
+ try{db=await openDB();}catch(error){console.error('IndexedDB indisponível:',error);db=null;}
+ if(db){try{tracks=await all('tracks');}catch(error){console.error('Falha ao carregar biblioteca:',error);tracks=[];}}
+ else tracks=[];
+ await loadPlaylists();
+ renderAll();startVisualizer();
+}
 boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v19';
+   const key='nexus-player-sw-refreshed-v20';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=19',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=20',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
