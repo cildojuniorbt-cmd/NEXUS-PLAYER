@@ -508,7 +508,8 @@ try{const saved=JSON.parse(localStorage.getItem('nexus-eq')||'null');if(saved)eq
 const visualizerNames={waves:'Ondas 3D',spectrum:'Espectro',particles:'Partículas',circular:'Circular',vortex:'Vórtice',cube:'Cubo',pulse:'Pulso',rings:'Anéis',mirror:'Espelhado',scope:'Osciloscópio',aurora:'Aurora',tunnel:'Túnel'};
 try{const savedStyle=localStorage.getItem('nexus-viz-style');if(visualizerNames[savedStyle])vizStyle=savedStyle;}catch(_){}
 if(localStorage.getItem('nexus-theme')==='light')document.body.classList.add('light');
-$('#eq-bands').innerHTML=frequencies.map((f,i)=>'<label class="eq-slider"><input type="range" min="-12" max="12" value="'+Number(eq.bands[i]||0)+'" data-band="'+i+'" aria-label="'+freqLabels[i]+' Hz"><b>'+freqLabels[i]+'</b><small>Hz</small></label>').join('');
+const eqBandsContainer=$('#eq-bands');
+if(eqBandsContainer)eqBandsContainer.innerHTML=frequencies.map((f,i)=>'<label class="eq-slider"><input type="range" min="-12" max="12" value="'+Number(eq.bands[i]||0)+'" data-band="'+i+'" aria-label="'+freqLabels[i]+' Hz"><b>'+freqLabels[i]+'</b><small>Hz</small></label>').join('');
 function notice(msg){const t=$('#toast');t.textContent=msg;t.style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display='none',2600);}
 function fmt(v){return Number.isFinite(v)?Math.floor(v/60)+':'+String(Math.floor(v%60)).padStart(2,'0'):'0:00';}
 function id(){return crypto.randomUUID?crypto.randomUUID():'nx-'+Date.now()+'-'+Math.random().toString(16).slice(2);}
@@ -600,7 +601,13 @@ function imageMarkup(t){return t.coverBlob?'<img src="'+urlFor(t,true)+'" alt="C
 function go(next){view=next;document.body.classList.toggle('home-mode',next==='home');document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='view-'+next));document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===next||((next==='favorites'||next==='explore')&&b.dataset.view==='more')));renderAll();if(next==='player')startVisualizer();}
 function currentTrack(){return tracks[current]||null;}
 function row(t,opts={}){return '<div class="track-row '+(currentTrack()&&currentTrack().id===t.id?'current':'')+'" data-play="'+esc(t.id)+'"><div class="track-thumb">'+(t.coverBlob?'<img src="'+urlFor(t,true)+'" alt="">':'♫')+'</div><div class="track-info"><b>'+esc(t.name)+'</b><small>'+esc(t.artist||'Artista desconhecido')+' · '+(isVideo(t)?'Vídeo':'Áudio')+'</small></div><div class="row-actions"><button data-fav="'+esc(t.id)+'" title="Favorito">'+(t.favorite?'♥':'♡')+'</button>'+(opts.add?'<button data-add="'+esc(t.id)+'" title="Adicionar à playlist">＋</button>':'')+(opts.remove?'<button data-remove="'+esc(t.id)+'" title="Remover da playlist">−</button>':'')+'<button data-more="'+esc(t.id)+'" title="Editar">···</button></div></div>';}
-function listInto(sel,arr,opts){$(sel).innerHTML=arr.length?arr.map(t=>row(t,opts)).join(''):'<div class="empty"><b>Nada por aqui ainda</b>'+esc(opts.empty||'Adicione músicas à sua biblioteca para começar.')+'</div>';}
+function listInto(sel,arr,opts={}){
+ const element=$(sel);
+ if(!element){console.warn('Nexus Player: contêiner de lista ausente:',sel);return;}
+ element.innerHTML=arr.length
+  ?arr.map(track=>row(track,opts)).join('')
+  :'<div class="empty"><b>Nada por aqui ainda</b>'+esc(opts.empty||'Adicione músicas à sua biblioteca para começar.')+'</div>';
+}
 function albumCard(t){const n=(t.name||'').toLowerCase();const sample=n.includes('entre nós')?'sample-entre':n.includes('lugar ao sol')?'sample-sol':n.includes('apenas um viajante')?'sample-viajante':'';return '<button class="album-card" data-play="'+esc(t.id)+'"><div class="cover '+sample+'">'+imageMarkup(t)+'<span class="cover-play">▶</span></div><strong>'+esc(t.name)+'</strong><small>'+esc(t.artist||'Artista desconhecido')+'</small></button>';}
 function demoAlbum(title,artist,art){return '<button class="album-card demo-album" data-demo-album="'+esc(title)+'"><div class="cover '+art+'"><span class="cover-play">▶</span></div><strong>'+esc(title)+'</strong><small>'+esc(artist)+' · exemplo visual</small></button>';}
 function playlistCard(p){
@@ -610,7 +617,21 @@ function playlistCard(p){
  return '<button class="playlist-card '+(selectedPlaylist===p.id?'selected':'')+'" data-open-playlist="'+esc(p.id)+'"><div class="playlist-art '+sample+'">♫</div><strong>'+esc(name)+'</strong><small>'+trackIds.length+' faixas</small></button>';
 }
 function demoPlaylist(name,count,art){return '<button class="playlist-card demo-playlist" data-demo-playlist="'+esc(name)+'"><div class="playlist-art '+art+'">♫</div><strong>'+esc(name)+'</strong><small>'+count+' músicas · exemplo</small></button>';}
-function renderHome(){const recent=[...tracks].sort((a,b)=>(b.addedAt||0)-(a.addedAt||0)).slice(0,5);$('#recent-grid').innerHTML=recent.length?recent.map(albumCard).join(''):[demoAlbum('Entre Nós e o Infinito','Siar','sample-entre'),demoAlbum('Lugar ao Sol','Siar','sample-sol'),demoAlbum('Apenas um Viajante','Siar','sample-viajante')].join('');$('#home-playlists').innerHTML=playlists.length?playlists.slice(0,4).map(playlistCard).join(''):[demoPlaylist('Rock Indie',32,'sample-rock'),demoPlaylist('Indie Brasil',48,'sample-indie'),demoPlaylist('Viagem',57,'sample-trip')].join('');}
+function renderHome(){
+ const recentGrid=$('#recent-grid');
+ if(recentGrid){
+  const recent=[...tracks].sort((a,b)=>(b.addedAt||0)-(a.addedAt||0)).slice(0,5);
+  recentGrid.innerHTML=recent.length
+   ?recent.map(albumCard).join('')
+   :[demoAlbum('Entre Nós e o Infinito','Siar','sample-entre'),demoAlbum('Lugar ao Sol','Siar','sample-sol'),demoAlbum('Apenas um Viajante','Siar','sample-viajante')].join('');
+ }
+ const homePlaylistGrid=$('#home-playlists');
+ if(homePlaylistGrid){
+  homePlaylistGrid.innerHTML=playlists.length
+   ?playlists.slice(0,4).map(playlistCard).join('')
+   :[demoPlaylist('Rock Indie',32,'sample-rock'),demoPlaylist('Indie Brasil',48,'sample-indie'),demoPlaylist('Viagem',57,'sample-trip')].join('');
+ }
+}
 function renderLibrary(){const q=$('#search').value.toLowerCase();const arr=tracks.filter(t=>(libraryFilter==='all'||(libraryFilter==='audio'?!isVideo(t):isVideo(t)))&&(t.name+' '+(t.artist||'')+' '+(t.album||'')).toLowerCase().includes(q));$('#library-count').textContent=tracks.length+' arquivos neste dispositivo';listInto('#library-list',arr,{add:true,empty:'Importe MP3, WAV, FLAC, M4A, MP4 e outros formatos suportados.'});document.querySelectorAll('[data-library-filter]').forEach(b=>b.classList.toggle('active',b.dataset.libraryFilter===libraryFilter));}
 function renderPlaylists(){
  playlists=(Array.isArray(playlists)?playlists:[])
@@ -619,10 +640,12 @@ function renderPlaylists(){
  if(selectedPlaylist&&!playlists.some(item=>item.id===selectedPlaylist))selectedPlaylist=null;
  const selected=playlists.find(item=>item.id===selectedPlaylist)||null;
  const grid=$('#playlist-grid');
+ if(!grid){console.warn('Nexus Player: contêiner #playlist-grid ausente.');return;}
  grid.innerHTML=playlists.length
   ?playlists.map(playlistCard).join('')
   :'<div class="empty playlist-empty" style="grid-column:1/-1"><b>Suas playlists começam aqui</b>Crie uma playlist para organizar suas músicas.</div>';
  const detail=$('#playlist-detail');
+ if(!detail){console.warn('Nexus Player: contêiner #playlist-detail ausente.');return;}
  detail.hidden=!selected;
  if(!selected)return;
  $('#selected-playlist-name').textContent=selected.name;
@@ -631,8 +654,11 @@ function renderPlaylists(){
  $('#selected-playlist-count').textContent=items.length+' faixas';
  listInto('#playlist-track-list',items,{remove:true,empty:'Adicione músicas usando o seletor abaixo.'});
  const available=tracks.filter(track=>!isVideo(track)&&!ids.includes(track.id));
- $('#playlist-add-track').innerHTML='<option value="">Escolher música da biblioteca</option>'+
-  available.map(track=>'<option value="'+esc(track.id)+'">'+esc(track.name)+'</option>').join('');
+ const addTrackSelect=$('#playlist-add-track');
+ if(addTrackSelect){
+  addTrackSelect.innerHTML='<option value="">Escolher música da biblioteca</option>'+
+   available.map(track=>'<option value="'+esc(track.id)+'">'+esc(track.name)+'</option>').join('');
+ }
 }
 function renderVizPicker(){
  const label=$('#home-viz-current');
@@ -1172,15 +1198,26 @@ $('#playlist-form').addEventListener('submit',async event=>{
  const name=input.value.trim().slice(0,48);
  if(!name){input.focus();return;}
  submitButton.disabled=true;
+ const playlist={id:id(),name,trackIds:[],createdAt:Date.now()};
+ let saved;
  try{
-  const playlist={id:id(),name,trackIds:[],createdAt:Date.now()};
-  const saved=await savePlaylistRecord(playlist);
-  selectedPlaylist=playlist.id;input.value='';go('playlists');
-  notice(saved.indexedDBSaved?'Playlist "'+name+'" criada e salva.':'Playlist "'+name+'" salva neste navegador.');
+  saved=await savePlaylistRecord(playlist);
  }catch(error){
-  console.error('Nexus Player: falha ao criar playlist',error);
+  console.error('Nexus Player: falha real ao persistir playlist',error);
   notice(error&&error.message?error.message:'Não foi possível salvar a playlist. Verifique o armazenamento.');
- }finally{submitButton.disabled=false;}
+  submitButton.disabled=false;
+  return;
+ }
+ selectedPlaylist=playlist.id;
+ input.value='';
+ try{
+  go('playlists');
+  notice(saved.indexedDBSaved?'Playlist "'+name+'" criada e salva.':'Playlist "'+name+'" salva neste navegador.');
+ }catch(renderError){
+  console.error('Nexus Player: playlist foi salva, mas houve falha ao atualizar a tela.',renderError);
+  notice('Playlist salva. Feche e abra a aba Playlists para atualizar a visualização.');
+ }
+ submitButton.disabled=false;
 });
 $('#playlist-grid').addEventListener('click',e=>{const b=e.target.closest('[data-open-playlist]');if(b){selectedPlaylist=b.dataset.openPlaylist;renderPlaylists();}});
 $('#add-to-selected').addEventListener('click',()=>{const trackId=$('#playlist-add-track').value;const p=playlists.find(x=>x.id===selectedPlaylist);if(!p||!trackId)return;if(p.trackIds.includes(trackId)){notice('Essa faixa já está na playlist.');return;}p.trackIds.push(trackId);savePlaylistRecord(p).then(()=>{renderPlaylists();notice('Música adicionada.');}).catch(error=>{console.error(error);notice(error.message||'Não foi possível adicionar a música.');});});
@@ -1213,10 +1250,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v21';
+   const key='nexus-player-sw-refreshed-v22';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=21',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=22',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
