@@ -276,6 +276,15 @@ body.nexus-viz-paused .nwv-spokes{animation-play-state:paused!important}
  .np-viz-fallback *,.np-global-dock button,.np-viz-switcher button{animation:none!important;transition:none!important}
 }
 
+/* V26 · iPhone/Safari safe-area correction for shared links */
+body.home-mode .np-home-screen{
+ padding-top:calc(env(safe-area-inset-top,0px) + 12px);
+}
+@media(max-width:780px){
+ body.home-mode .np-home-screen{
+  padding-top:max(14px,calc(env(safe-area-inset-top,0px) + 10px));
+ }
+}
 /* NEXUS V25 · refined mobile player, EQ studio and accent personalization */
 :root{--accent:#a66cff;--accent-deep:#6555e8;--accent-light:#e2c5ff;--accent-secondary:#62c9ff;--accent-soft:#a66cff25;--accent-border:#a66cff66;--accent-glow:#a66cff44}
 .kicker,.text-link{color:var(--accent-light)}
@@ -1583,10 +1592,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v25';
+   const key='nexus-player-sw-refreshed-v26';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=25',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=26',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
