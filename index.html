@@ -1037,7 +1037,8 @@ function stopIOSMonitor(){
  if(!isAppleMobile)return;
  try{monitorAudio.pause();}catch(_){}
  analyser=null;
- if(ctx&&ctx.state==='running')ctx.suspend().catch(()=>{});
+ // V27: Do not suspend the shared Web Audio context when Safari backgrounds
+ // the page. The audible track stays on the native HTMLAudioElement pipeline.
 }
 function updateMediaSession(force=false){
  if(!('mediaSession' in navigator))return;
@@ -1469,7 +1470,7 @@ function updateDuration(el){if(el!==media)return;$('#mini-duration').textContent
  el.volume=1;el.muted=false;
  el.addEventListener('timeupdate',()=>updateProgress(el));
  el.addEventListener('loadedmetadata',()=>updateDuration(el));
- el.addEventListener('play',()=>{renderPlayer();updateMediaSession();});
+ el.addEventListener('play',()=>{if(isAppleMobile&&el===audio)setPlaybackAudioSession();renderPlayer();updateMediaSession();});
  el.addEventListener('pause',()=>{
   if(isAppleMobile&&el===media)monitorAudio.pause();
   renderPlayer();updateMediaSession();
@@ -1592,10 +1593,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v26';
+   const key='nexus-player-sw-refreshed-v27';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=26',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=27',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
