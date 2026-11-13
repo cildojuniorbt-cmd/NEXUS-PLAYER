@@ -752,7 +752,7 @@ body.home-mode .main{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V30';
+const APP_VERSION='V31';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -866,7 +866,13 @@ async function deletePlaylistRecord(playlistId){
 }
 function urlFor(t,cover=false){const key=t.id+(cover?':cover':'');const blob=cover?t.coverBlob:t.blob;if(!blob)return'';if(!urls.has(key))urls.set(key,URL.createObjectURL(blob));return urls.get(key);}
 function imageMarkup(t){return t.coverBlob?'<img src="'+urlFor(t,true)+'" alt="Capa de '+esc(t.name)+'">':'<span class="cover-symbol">N</span><span class="cover-caption">'+esc(t.artist||'Nexus Player')+'</span>';}
+function closeHomeMoreMenu(){
+ const menu=$('#home-more-menu'),trigger=$('#home-more');
+ if(menu)menu.hidden=true;
+ if(trigger)trigger.setAttribute('aria-expanded','false');
+}
 function go(next){
+ closeHomeMoreMenu();
  view=next;
  document.body.classList.toggle('home-mode',next==='home');
  viewNodes.forEach(section=>section.classList.toggle('active',section.id==='view-'+next));
@@ -1559,7 +1565,19 @@ $('#accent-options').addEventListener('click',event=>{
  if(button)applyAccentTheme(button.dataset.accent);
 });
 applyAccentTheme(accentTheme,false);
-$('#home-more').addEventListener('click',()=>{$('#home-more-menu').hidden=!$('#home-more-menu').hidden;});$('#home-add-cover').addEventListener('click',()=>{if(currentTrack())$('#cover-file').click();else notice('Selecione uma música primeiro.');$('#home-more-menu').hidden=true;});$('#home-edit-track').addEventListener('click',()=>{if(currentTrack())editTrack(currentTrack().id);else notice('Selecione uma música primeiro.');$('#home-more-menu').hidden=true;});
+$('#home-more').setAttribute('aria-haspopup','true');
+$('#home-more').setAttribute('aria-expanded','false');
+$('#home-more').addEventListener('click',()=>{
+ const menu=$('#home-more-menu');
+ menu.hidden=!menu.hidden;
+ $('#home-more').setAttribute('aria-expanded',menu.hidden?'false':'true');
+});
+document.addEventListener('click',event=>{
+ if(!event.target.closest('#home-more-menu')&&!event.target.closest('#home-more'))closeHomeMoreMenu();
+});
+document.addEventListener('keydown',event=>{
+ if(event.key==='Escape')closeHomeMoreMenu();
+});$('#home-add-cover').addEventListener('click',()=>{if(currentTrack())$('#cover-file').click();else notice('Selecione uma música primeiro.');$('#home-more-menu').hidden=true;});$('#home-edit-track').addEventListener('click',()=>{if(currentTrack())editTrack(currentTrack().id);else notice('Selecione uma música primeiro.');$('#home-more-menu').hidden=true;});
 function toggleTheme(){document.body.classList.toggle('light');localStorage.setItem('nexus-theme',document.body.classList.contains('light')?'light':'dark');}
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.view)));
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
@@ -1625,10 +1643,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v30';
+   const key='nexus-player-sw-refreshed-v31';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=30',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=31',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
