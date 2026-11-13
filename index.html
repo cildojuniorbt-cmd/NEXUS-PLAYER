@@ -655,8 +655,7 @@ body.light .accent-options button[aria-pressed="true"]{color:#312943;background:
 const $=s=>document.querySelector(s);
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-const monitorAudio=new Audio();monitorAudio.preload='auto';monitorAudio.controls=false;monitorAudio.playsInline=true;
-let monitorGraph=null,lastMonitorSync=0,mediaSessionHandlersReady=false;
+let mediaSessionHandlersReady=false;
 const DB='nexus-player-db',DBV=3,frequencies=[60,150,400,1000,2500,6000,12000],freqLabels=['60','150','400','1k','2.5k','6k','12k'],presets={Flat:[0,0,0,0,0,0,0],Rock:[5,3,-1,1,3,4,4],Pop:[-1,2,4,3,0,-1,1],Indie:[3,1,0,2,3,2,1],Acoustic:[2,2,1,0,2,3,2]};
 let db,tracks=[],playlists=[],current=-1,media=audio,view='home',libraryFilter='all',genre='all',selectedPlaylist=null,queue=null,shuffle=false,repeat=false,shuffleOrder=null,ctx=null,graphs=new WeakMap(),graphList=[],analyser=null,raf=0,urls=new Map(),toastTimer,vizStyle='waves',visualizerStarted=false,visualizerDraw=null,visualizerResize=null,lastMediaSessionPositionAt=0,lastMediaSessionTrackKey=null,lastMediaSessionState=null;
 let eq={enabled:true,bands:[0,0,0,0,0,0,0],bass:0,treble:0,virtualizer:0,preset:'Flat'};
@@ -973,73 +972,9 @@ function setPlaybackAudioSession(){
   if(navigator.audioSession)navigator.audioSession.type='playback';
  }catch(error){console.warn('AudioSession:',error);}
 }
-function prepareIOSMonitor(track,allowStart=false){
- if(!isAppleMobile||!track||isVideo(track))return;
- const AudioContextClass=window.AudioContext||window.webkitAudioContext;
- if(!AudioContextClass)return;
- try{
-  if(!ctx)ctx=new AudioContextClass();
-  if(!monitorGraph){
-   const source=ctx.createMediaElementSource(monitorAudio);
-   const analyserNode=ctx.createAnalyser();
-   analyserNode.fftSize=2048;
-   analyserNode.smoothingTimeConstant=.76;
-   const silentGain=ctx.createGain();
-   silentGain.gain.value=0;
-   source.connect(analyserNode);
-   analyserNode.connect(silentGain);
-   silentGain.connect(ctx.destination);
-   monitorGraph={source,analyser:analyserNode,silentGain};
-  }
-  analyser=monitorGraph.analyser;
-  const sourceUrl=urlFor(track);
-  const sourceChanged=monitorAudio.src!==sourceUrl;
-  if(sourceChanged){
-   monitorAudio.pause();
-   monitorAudio.src=sourceUrl;
-   monitorAudio.load();
-   monitorAudio.addEventListener('loadedmetadata',()=>{
-    if(currentTrack()&&urlFor(currentTrack())===sourceUrl){
-     try{monitorAudio.currentTime=media.currentTime||0;}catch(_){}
-    }
-   },{once:true});
-  }else if(monitorAudio.readyState>=1){
-   try{
-    if(Math.abs(monitorAudio.currentTime-(media.currentTime||0))>.35)monitorAudio.currentTime=media.currentTime||0;
-   }catch(_){}
-  }
-  // Resume the analysis context from the same tap as the audible Play action.
-  if(ctx.state!=='running')ctx.resume().catch(error=>console.warn('AudioContext do visualizador:',error));
-  if(allowStart&&!document.hidden){
-   // This play() is deliberately after the native media element's play() call.
-   monitorAudio.play().catch(error=>console.warn('Visualizador iPhone:',error));
-  }else if(!document.hidden&&!media.paused&&monitorAudio.paused&&monitorAudio.readyState>=2){
-   monitorAudio.play().catch(error=>console.warn('Monitor:',error));
-  }
- }catch(error){
-  console.warn('Monitor de visualização indisponível:',error);
-  analyser=null;
- }
-}
-function syncIOSMonitor(force=false){
- if(!isAppleMobile||!monitorGraph||!currentTrack()||isVideo(currentTrack())||media.paused||document.hidden)return;
- const now=performance.now();
- if(!force&&now-lastMonitorSync<500)return;
- lastMonitorSync=now;
- if(monitorAudio.readyState>=1){
-  try{
-   if(Math.abs(monitorAudio.currentTime-media.currentTime)>.45)monitorAudio.currentTime=media.currentTime;
-  }catch(_){}
- }
- if(monitorAudio.paused)monitorAudio.play().catch(()=>{});
-}
-function stopIOSMonitor(){
- if(!isAppleMobile)return;
- try{monitorAudio.pause();}catch(_){}
- analyser=null;
- // V27: Do not suspend the shared Web Audio context when Safari backgrounds
- // the page. The audible track stays on the native HTMLAudioElement pipeline.
-}
+// V28: iOS uses only the primary native audio element. A second, silent
+// HTMLAudioElement used by the visualizer can take over WebKit's background
+// media session, leaving the lock-screen timer running with no audible sound.
 function updateMediaSession(force=false){
  if(!('mediaSession' in navigator))return;
  const session=navigator.mediaSession,track=currentTrack();
@@ -1093,9 +1028,7 @@ function startPlayback(){
  try{playPromise=el.play();}catch(error){reportPlayError(error);return;}
  // Invoke the silent analyser after the native media play request, inside
  // the same click/tap gesture accepted by iOS.
- if(isAppleMobile&&el===audio)prepareIOSMonitor(currentTrack(),true);
  Promise.resolve(playPromise).then(()=>{
-  if(isAppleMobile&&el===audio)prepareIOSMonitor(currentTrack());
   renderPlayer();updateMediaSession();
  }).catch(reportPlayError);
 }
@@ -1461,7 +1394,6 @@ function updateProgress(el){
  const value=el.duration?el.currentTime/el.duration*1000:0;
  $('#mini-seek').value=value;$('#home-seek').value=value;
  $('#mini-current').textContent=$('#home-current').textContent=fmt(el.currentTime);
- if(isAppleMobile)syncIOSMonitor();
  updateCoverProgress();
  updateMediaSessionPosition();
 }
@@ -1472,8 +1404,7 @@ function updateDuration(el){if(el!==media)return;$('#mini-duration').textContent
  el.addEventListener('loadedmetadata',()=>updateDuration(el));
  el.addEventListener('play',()=>{if(isAppleMobile&&el===audio)setPlaybackAudioSession();renderPlayer();updateMediaSession();});
  el.addEventListener('pause',()=>{
-  if(isAppleMobile&&el===media)monitorAudio.pause();
-  renderPlayer();updateMediaSession();
+   renderPlayer();updateMediaSession();
  });
  el.addEventListener('ended',()=>{if(el===media&&!repeat)next();});
  el.addEventListener('error',()=>{if(el===media&&el.currentSrc)notice('Esse formato não é compatível com o navegador.');});
@@ -1481,20 +1412,20 @@ function updateDuration(el){if(el!==media)return;$('#mini-duration').textContent
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden){
   // Keep music playback running; pause only visual processing and its render loop.
-  stopVisualizer();stopIOSMonitor();
+  stopVisualizer();
  }else{
   if(view==='home'||view==='player')startVisualizer();
   if(isAppleMobile&&currentTrack()&&!media.paused){
    setPlaybackAudioSession();
    if(ctx&&ctx.state!=='running')ctx.resume().catch(()=>{});
-   prepareIOSMonitor(currentTrack());syncIOSMonitor(true);updateMediaSession();
+   updateMediaSession();
   }
  }
 });
 window.addEventListener('pageshow',()=>{
  if(view==='home'||view==='player')startVisualizer();
  if(isAppleMobile&&currentTrack()&&!media.paused){
-  setPlaybackAudioSession();prepareIOSMonitor(currentTrack());syncIOSMonitor(true);
+  setPlaybackAudioSession();updateMediaSession();
  }
 });
 function seek(v){if(Number.isFinite(media.duration)&&media.duration>0)media.currentTime=media.duration*Number(v)/1000;}
@@ -1593,10 +1524,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v27';
+   const key='nexus-player-sw-refreshed-v28';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=27',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=28',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
