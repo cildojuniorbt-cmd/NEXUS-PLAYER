@@ -414,6 +414,84 @@ body.light .accent-options button[aria-pressed="true"]{color:#312943;background:
  body.home-mode .np-home-controls{margin:8px auto 6px}
  body.home-mode .np-home-controls .np-big-play{width:55px;height:55px;min-width:55px}
 }
+
+/* V30 · unified responsive frame for every screen */
+html,body{width:100%;max-width:100%;min-width:0}
+body{overflow-x:hidden}
+.app{width:100%;min-width:0}
+.main{
+ width:100%;
+ max-width:980px;
+ min-width:0;
+ margin:0 auto;
+ padding:0 clamp(16px,3vw,26px) calc(104px + env(safe-area-inset-bottom));
+}
+body.home-mode .main{
+ max-width:720px;
+ padding:0 25px calc(96px + env(safe-area-inset-bottom));
+}
+.view{width:100%;max-width:100%;min-width:0}
+.view>*{min-width:0;max-width:100%}
+.view-toolbar{
+ width:100%;
+ max-width:760px;
+ margin-left:auto;
+ margin-right:auto;
+}
+.filter-pills,.track-list,.playlist-grid,#playlist-form{
+ width:100%;
+ max-width:760px;
+ min-width:0;
+ margin-left:auto;
+ margin-right:auto;
+}
+.track-row{
+ width:100%;
+ max-width:100%;
+ min-width:0;
+}
+.track-info,.row-actions{min-width:0}
+#playlist-detail:not([hidden]){
+ display:block;
+ box-sizing:border-box;
+ width:100%;
+ max-width:760px;
+ min-width:0;
+ margin-left:auto;
+ margin-right:auto;
+}
+#playlist-track-list{
+ display:grid;
+ width:100%;
+ max-width:100%;
+ min-width:0;
+}
+#playlist-track-list .track-row{width:100%;max-width:100%;min-width:0}
+#playlist-form{
+ box-sizing:border-box;
+ grid-template-columns:minmax(0,1fr) auto;
+}
+@media(max-width:780px){
+ .main{
+  max-width:760px;
+  padding:0 16px calc(104px + env(safe-area-inset-bottom));
+ }
+ body.home-mode .main{
+  max-width:720px;
+  padding:0 16px calc(96px + env(safe-area-inset-bottom));
+ }
+ .view-toolbar{margin-top:22px}
+ .filter-pills{padding-bottom:2px}
+ #playlist-detail:not([hidden]){padding:13px}
+ #playlist-detail>.toolbar-actions{min-width:0}
+ #playlist-detail>.toolbar-actions #playlist-add-track{min-width:0}
+}
+@media(max-width:390px){
+ .main{padding-left:16px;padding-right:16px}
+ body.home-mode .main{padding-left:16px;padding-right:16px}
+ #playlist-form{grid-template-columns:minmax(0,1fr) auto}
+ #playlist-form button{white-space:nowrap}
+}
 </style>
 </head>
 <body>
@@ -674,7 +752,7 @@ body.light .accent-options button[aria-pressed="true"]{color:#312943;background:
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V29';
+const APP_VERSION='V30';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1547,10 +1625,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v29';
+   const key='nexus-player-sw-refreshed-v30';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=29',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=30',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
