@@ -794,7 +794,7 @@ html.pwa-standalone,html.pwa-standalone *{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V33';
+const APP_VERSION='V34';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -913,16 +913,26 @@ function closeHomeMoreMenu(){
  if(menu)menu.hidden=true;
  if(trigger)trigger.setAttribute('aria-expanded','false');
 }
+function syncViewMode(){
+ const activeView=document.querySelector('.view.active');
+ const isHome=activeView?activeView.id==='view-home':view==='home';
+ document.body.classList.toggle('home-mode',isHome);
+}
 function go(next){
  closeHomeMoreMenu();
  view=next;
- document.body.classList.toggle('home-mode',next==='home');
  viewNodes.forEach(section=>section.classList.toggle('active',section.id==='view-'+next));
  viewButtons.forEach(button=>button.classList.toggle('active',button.dataset.view===next||((next==='favorites'||next==='explore')&&button.dataset.view==='more')));
+ syncViewMode();
  renderAll();
  if(next==='home'||next==='player')startVisualizer();
  else stopVisualizer();
 }
+// iOS may restore a standalone window from a suspended snapshot. Re-sync
+// the shell with the active page whenever that window returns.
+window.addEventListener('pageshow',syncViewMode);
+window.addEventListener('focus',syncViewMode);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncViewMode();});
 function currentTrack(){return tracks[current]||null;}
 function updateCoverProgress(){
  const area=$('.np-cover-area');if(!area)return;
@@ -1051,6 +1061,7 @@ function renderPlayer(){
 }
 function renderEqualizer(){document.querySelectorAll('[data-band]').forEach(el=>el.value=eq.bands[Number(el.dataset.band)]||0);document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('active',b.dataset.preset===eq.preset));$('#eq-enabled').checked=!!eq.enabled;$('#bass').value=eq.bass;$('#treble').value=eq.treble;$('#virtualizer').value=eq.virtualizer;$('#bass-value').textContent=(eq.bass>0?'+':'')+eq.bass;$('#treble-value').textContent=(eq.treble>0?'+':'')+eq.treble;$('#virtual-value').textContent=eq.virtualizer;['bass','treble','virtual'].forEach(name=>{const val=name==='virtual'?eq.virtualizer:(name==='bass'?eq.bass:eq.treble);const max=name==='virtual'?100:12;$('#'+name+'-knob').style.setProperty('--level',(val/max*100)+'%');});document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('active',b.dataset.preset===eq.preset));}
 function renderAll(){
+ syncViewMode();
  renderPlayer();
  switch(view){
   case 'home':renderHome();break;
@@ -1795,7 +1806,7 @@ document.body.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&
 function mediaSession(t){if(!('mediaSession'in navigator)||!t)return;try{navigator.mediaSession.metadata=new MediaMetadata({title:t.name,artist:t.artist||'Nexus Player',album:t.album||'Biblioteca'});navigator.mediaSession.setActionHandler('play',toggle);navigator.mediaSession.setActionHandler('pause',()=>media.pause());navigator.mediaSession.setActionHandler('previoustrack',prev);navigator.mediaSession.setActionHandler('nexttrack',next);}catch(_){}}
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search').focus();}if(e.code==='Space'&&!['INPUT','TEXTAREA','BUTTON','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();toggle();}});
 async function boot(){
- document.body.classList.add('home-mode');
+ syncViewMode();
  try{db=await openDB();}catch(error){console.error('IndexedDB indisponível:',error);db=null;}
  if(db){try{tracks=await all('tracks');}catch(error){console.error('Falha ao carregar biblioteca:',error);tracks=[];}}
  else tracks=[];
@@ -1806,10 +1817,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v33';
+   const key='nexus-player-sw-refreshed-v34';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=33',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=34',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
