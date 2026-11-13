@@ -535,25 +535,30 @@ html.pwa-standalone,html.pwa-standalone *{
  body:not(:has(#view-home.active)) .view{width:100%;min-width:0}
 }
 
-/* V37 · stabilize scrolling in the iOS Home Screen app */
+/* V38 · fixed header and real document scroll for iOS Home Screen */
 @media(max-width:780px){
- html,body{overscroll-behavior-y:none}
- body:not(:has(#view-home.active)) .topbar{
+ html.pwa-standalone body.inner-view-mode{
+  overflow-x:clip!important;
+  overscroll-behavior-y:auto;
+ }
+ html.pwa-standalone body.inner-view-mode .topbar{
   display:flex!important;
-  position:sticky;
-  top:env(safe-area-inset-top,0px);
-  z-index:75;
-  height:calc(64px + env(safe-area-inset-top,0px));
-  padding-top:env(safe-area-inset-top,0px);
-  margin:0;
-  background:linear-gradient(180deg,rgba(8,8,20,.98),rgba(8,8,20,.95));
-  border-bottom:1px solid var(--line);
+  position:fixed!important;
+  top:0!important;
+  left:0!important;
+  right:0!important;
+  z-index:90!important;
+  height:calc(64px + env(safe-area-inset-top,0px))!important;
+  padding:env(safe-area-inset-top,0px) 0 0!important;
+  margin:0!important;
+  background:linear-gradient(180deg,rgba(8,8,20,.99),rgba(8,8,20,.96))!important;
+  border-bottom:1px solid var(--line)!important;
   -webkit-backdrop-filter:blur(16px);
   backdrop-filter:blur(16px);
  }
- body:not(:has(#view-home.active)) .main{
-  overscroll-behavior-y:contain;
-  scroll-margin-top:0;
+ html.pwa-standalone body.inner-view-mode .main{
+  padding-top:calc(64px + env(safe-area-inset-top,0px) + 10px)!important;
+  overscroll-behavior-y:auto;
  }
 }
 </style>
@@ -816,7 +821,7 @@ html.pwa-standalone,html.pwa-standalone *{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V37';
+const APP_VERSION='V38';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -939,6 +944,7 @@ function syncViewMode(){
  const activeView=document.querySelector('.view.active');
  const isHome=activeView?activeView.id==='view-home':view==='home';
  document.body.classList.toggle('home-mode',isHome);
+ document.body.classList.toggle('inner-view-mode',!isHome);
 }
 function go(next){
  closeHomeMoreMenu();
@@ -1852,10 +1858,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v37';
+   const key='nexus-player-sw-refreshed-v38';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=37',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=38',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
