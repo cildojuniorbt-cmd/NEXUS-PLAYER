@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script>
+try{
+ const standalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+ if(standalone)document.documentElement.classList.add('pwa-standalone');
+}catch(_){}
+</script>
 <meta name="theme-color" content="#080814">
 <meta name="description" content="NEXUS PLAYER. Música sem limites.">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -512,6 +518,22 @@ body.playlist-reordering{user-select:none;-webkit-user-select:none;cursor:grabbi
  #playlist-track-list .row-actions{gap:0}
  #playlist-track-list .row-actions button{min-width:32px}
 }
+
+/* V33 · stabilize iOS Home Screen app text sizing */
+html,body,body *{
+ -webkit-text-size-adjust:100%;
+ text-size-adjust:100%;
+}
+html.pwa-standalone,html.pwa-standalone *{
+ -webkit-text-size-adjust:100%!important;
+ text-size-adjust:100%!important;
+}
+@media(display-mode:standalone){
+ html,body{width:100%;max-width:100%;overflow-x:hidden}
+ body:not(.home-mode) .app{width:100%;max-width:100%;min-width:0}
+ body:not(.home-mode) .main{width:100%;max-width:760px;min-width:0;margin-left:auto;margin-right:auto}
+ body:not(.home-mode) .view{width:100%;min-width:0}
+}
 </style>
 </head>
 <body>
@@ -772,7 +794,7 @@ body.playlist-reordering{user-select:none;-webkit-user-select:none;cursor:grabbi
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V32';
+const APP_VERSION='V33';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1784,10 +1806,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v32';
+   const key='nexus-player-sw-refreshed-v33';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=32',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=33',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
