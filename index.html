@@ -794,7 +794,7 @@ html.pwa-standalone,html.pwa-standalone *{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V34';
+const APP_VERSION='V35';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -921,6 +921,8 @@ function syncViewMode(){
 function go(next){
  closeHomeMoreMenu();
  view=next;
+ // Set the shell directly from the requested destination before rendering.
+ document.body.classList.toggle('home-mode',next==='home');
  viewNodes.forEach(section=>section.classList.toggle('active',section.id==='view-'+next));
  viewButtons.forEach(button=>button.classList.toggle('active',button.dataset.view===next||((next==='favorites'||next==='explore')&&button.dataset.view==='more')));
  syncViewMode();
@@ -928,9 +930,15 @@ function go(next){
  if(next==='home'||next==='player')startVisualizer();
  else stopVisualizer();
 }
-// iOS may restore a standalone window from a suspended snapshot. Re-sync
-// the shell with the active page whenever that window returns.
-window.addEventListener('pageshow',syncViewMode);
+// iOS may restore a standalone window from a suspended snapshot. Keep the
+// app shell tied to whichever screen is visibly active, not stale page state.
+const viewModeObserver=new MutationObserver(()=>syncViewMode());
+viewNodes.forEach(section=>viewModeObserver.observe(section,{attributes:true,attributeFilter:['class']}));
+window.addEventListener('pageshow',()=>{
+ const active=document.querySelector('.view.active');
+ if(active)document.body.classList.toggle('home-mode',active.id==='view-home');
+ syncViewMode();
+});
 window.addEventListener('focus',syncViewMode);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncViewMode();});
 function currentTrack(){return tracks[current]||null;}
@@ -1061,6 +1069,8 @@ function renderPlayer(){
 }
 function renderEqualizer(){document.querySelectorAll('[data-band]').forEach(el=>el.value=eq.bands[Number(el.dataset.band)]||0);document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('active',b.dataset.preset===eq.preset));$('#eq-enabled').checked=!!eq.enabled;$('#bass').value=eq.bass;$('#treble').value=eq.treble;$('#virtualizer').value=eq.virtualizer;$('#bass-value').textContent=(eq.bass>0?'+':'')+eq.bass;$('#treble-value').textContent=(eq.treble>0?'+':'')+eq.treble;$('#virtual-value').textContent=eq.virtualizer;['bass','treble','virtual'].forEach(name=>{const val=name==='virtual'?eq.virtualizer:(name==='bass'?eq.bass:eq.treble);const max=name==='virtual'?100:12;$('#'+name+'-knob').style.setProperty('--level',(val/max*100)+'%');});document.querySelectorAll('[data-preset]').forEach(b=>b.classList.toggle('active',b.dataset.preset===eq.preset));}
 function renderAll(){
+ const active=document.querySelector('.view.active');
+ if(active)document.body.classList.toggle('home-mode',active.id==='view-home');
  syncViewMode();
  renderPlayer();
  switch(view){
@@ -1817,10 +1827,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v34';
+   const key='nexus-player-sw-refreshed-v35';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=34',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=35',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
