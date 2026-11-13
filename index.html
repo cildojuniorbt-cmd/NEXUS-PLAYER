@@ -376,7 +376,17 @@ body.light .np-home-quick-actions button{background:#ffffff14;color:#edf1f8}
 .accent-options button[aria-pressed="true"]>span{outline:2px solid var(--accent-light);outline-offset:3px}
 .accent-options button small{font-size:10px}
 .accent-saved-note{font-size:10px;color:#8290a7;margin:13px 0 0}
+.app-version-panel{max-width:760px;margin:14px auto 26px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(145deg,#151729,#0d1020)}
+.app-version-info{display:flex;align-items:center;gap:12px;min-width:0}
+.app-version-mark{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,#d75bff,#7138ff 58%,#12c6ed);color:#fff;font-size:19px;font-weight:900;box-shadow:0 0 20px #a83dff35}
+.app-version-copy{min-width:0}
+.app-version-copy .kicker{display:block;margin-bottom:2px}
+.app-version-copy strong{display:block;font-size:13px;letter-spacing:.4px}
+.app-version-copy small{display:block;margin-top:2px;color:var(--muted);font-size:11px}
+.app-version-badge{flex:0 0 auto;padding:7px 12px;border:1px solid var(--accent-border);border-radius:999px;background:var(--accent-soft);color:var(--accent-light);font-size:12px;font-weight:800;letter-spacing:.5px}
 body.light .accent-panel{background:#fff}
+body.light .app-version-panel{background:#fff;border-color:#e8e2f0}
+body.light .app-version-copy small{color:#777087}
 body.light .accent-options button{color:#706780}
 body.light .accent-options button[aria-pressed="true"]{color:#312943;background:#f6f0ff}
 @media(max-width:780px){
@@ -627,6 +637,17 @@ body.light .accent-options button[aria-pressed="true"]{color:#312943;background:
       </div>
       <p class="accent-saved-note">Sua escolha fica salva neste dispositivo.</p>
     </section>
+    <section class="app-version-panel" aria-label="Versão do aplicativo">
+      <div class="app-version-info">
+        <span class="app-version-mark" aria-hidden="true">N</span>
+        <div class="app-version-copy">
+          <span class="kicker">SOBRE O APLICATIVO</span>
+          <strong>NEXUS PLAYER</strong>
+          <small>Versão instalada neste dispositivo</small>
+        </div>
+      </div>
+      <span class="app-version-badge" id="app-version">V29</span>
+    </section>
   </section>
 
   <section class="view" id="view-favorites"><div class="view-toolbar"><div><span class="kicker">SELEÇÃO ESPECIAL</span><h2>Favoritos</h2></div></div><div class="track-list" id="favorites-list"></div></section>
@@ -653,7 +674,9 @@ body.light .accent-options button[aria-pressed="true"]{color:#312943;background:
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
+const APP_VERSION='V29';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
+$('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 let mediaSessionHandlersReady=false;
 const DB='nexus-player-db',DBV=3,frequencies=[60,150,400,1000,2500,6000,12000],freqLabels=['60','150','400','1k','2.5k','6k','12k'],presets={Flat:[0,0,0,0,0,0,0],Rock:[5,3,-1,1,3,4,4],Pop:[-1,2,4,3,0,-1,1],Indie:[3,1,0,2,3,2,1],Acoustic:[2,2,1,0,2,3,2]};
@@ -1524,10 +1547,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v28';
+   const key='nexus-player-sw-refreshed-v29';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=28',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=29',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
