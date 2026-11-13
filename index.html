@@ -492,6 +492,26 @@ body.home-mode .main{
  #playlist-form{grid-template-columns:minmax(0,1fr) auto}
  #playlist-form button{white-space:nowrap}
 }
+
+/* V32 · long-press playlist track reordering */
+.row-drag-handle{
+ width:24px;min-width:24px;height:42px;flex:0 0 24px;
+ display:grid;place-items:center;padding:0;border:0;border-radius:8px;
+ background:transparent;color:var(--accent-light);font-size:22px;line-height:1;
+ cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
+}
+.row-drag-handle:active{background:var(--accent-soft);cursor:grabbing}
+.playlist-reorder-hint{margin:5px 0 0!important;color:var(--muted);font-size:11px!important}
+#playlist-track-list .track-row{transition:border-color .12s ease,background .12s ease,opacity .12s ease}
+#playlist-track-list .track-row.is-dragging{opacity:.48;border:1px dashed var(--accent);background:var(--accent-soft)}
+#playlist-track-list .track-row.drop-target{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-border)}
+body.playlist-reordering{user-select:none;-webkit-user-select:none;cursor:grabbing}
+@media(max-width:390px){
+ .row-drag-handle{width:21px;min-width:21px;flex-basis:21px;font-size:20px}
+ #playlist-track-list .track-row{gap:8px;padding-left:8px;padding-right:8px}
+ #playlist-track-list .row-actions{gap:0}
+ #playlist-track-list .row-actions button{min-width:32px}
+}
 </style>
 </head>
 <body>
@@ -661,7 +681,7 @@ body.home-mode .main{
     <div class="view-toolbar"><div><span class="kicker">COLEÇÕES PERSONALIZADAS</span><h2>Playlists</h2><span class="muted">Crie a trilha sonora de cada momento.</span></div></div>
     <form class="toolbar-actions" id="playlist-form"><input class="field" id="playlist-name" maxlength="48" placeholder="Nome da playlist" required><button class="primary" type="submit">＋ Criar playlist</button></form>
     <div class="playlist-grid section" id="playlist-grid"></div>
-    <section class="side-panel section" id="playlist-detail" hidden><div class="section-heading"><div><span class="kicker">PLAYLIST SELECIONADA</span><h2 id="selected-playlist-name"></h2><p id="selected-playlist-count"></p></div><div class="toolbar-actions"><button class="soft-btn" id="rename-playlist">Renomear</button><button class="soft-btn" id="delete-playlist">Excluir</button></div></div><div class="toolbar-actions"><select class="field" id="playlist-add-track"><option value="">Escolher música da biblioteca</option></select><button class="soft-btn" id="add-to-selected">Adicionar</button></div><div class="track-list section" id="playlist-track-list"></div></section>
+    <section class="side-panel section" id="playlist-detail" hidden><div class="section-heading"><div><span class="kicker">PLAYLIST SELECIONADA</span><h2 id="selected-playlist-name"></h2><p id="selected-playlist-count"></p><p class="playlist-reorder-hint">⠿ Segure no ícone e arraste para mudar a ordem das faixas.</p></div><div class="toolbar-actions"><button class="soft-btn" id="rename-playlist">Renomear</button><button class="soft-btn" id="delete-playlist">Excluir</button></div></div><div class="toolbar-actions"><select class="field" id="playlist-add-track"><option value="">Escolher música da biblioteca</option></select><button class="soft-btn" id="add-to-selected">Adicionar</button></div><div class="track-list section" id="playlist-track-list"></div></section>
   </section>
 
   <section class="view" id="view-explore">
@@ -752,7 +772,7 @@ body.home-mode .main{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V31';
+const APP_VERSION='V32';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -903,7 +923,10 @@ function applyAccentTheme(name,persist=true){
  document.querySelectorAll('#accent-options [data-accent]').forEach(button=>button.setAttribute('aria-pressed',button.dataset.accent===key?'true':'false'));
  if(persist){try{localStorage.setItem('nexus-accent-theme',key);}catch(_){}}
 }
-function row(t,opts={}){return '<div class="track-row '+(currentTrack()&&currentTrack().id===t.id?'current':'')+'" data-play="'+esc(t.id)+'"><div class="track-thumb">'+(t.coverBlob?'<img src="'+urlFor(t,true)+'" alt="">':'♫')+'</div><div class="track-info"><b>'+esc(t.name)+'</b><small>'+esc(t.artist||'Artista desconhecido')+' · '+(isVideo(t)?'Vídeo':'Áudio')+'</small></div><div class="row-actions"><button data-fav="'+esc(t.id)+'" title="Favorito">'+(t.favorite?'♥':'♡')+'</button>'+(opts.add?'<button data-add="'+esc(t.id)+'" title="Adicionar à playlist">＋</button>':'')+(opts.remove?'<button data-remove="'+esc(t.id)+'" title="Remover da playlist">−</button>':'')+'<button data-more="'+esc(t.id)+'" title="Editar">···</button></div></div>';}
+function row(t,opts={}){
+ const dragHandle=opts.reorder?'<button type="button" class="row-drag-handle" aria-label="Segure para reorganizar a faixa" title="Segure e arraste para reorganizar">⠿</button>':'';
+ return '<div class="track-row '+(currentTrack()&&currentTrack().id===t.id?'current':'')+'" data-play="'+esc(t.id)+'">'+dragHandle+'<div class="track-thumb">'+(t.coverBlob?'<img src="'+urlFor(t,true)+'" alt="">':'♫')+'</div><div class="track-info"><b>'+esc(t.name)+'</b><small>'+esc(t.artist||'Artista desconhecido')+' · '+(isVideo(t)?'Vídeo':'Áudio')+'</small></div><div class="row-actions"><button data-fav="'+esc(t.id)+'" title="Favorito">'+(t.favorite?'♥':'♡')+'</button>'+(opts.add?'<button data-add="'+esc(t.id)+'" title="Adicionar à playlist">＋</button>':'')+(opts.remove?'<button data-remove="'+esc(t.id)+'" title="Remover da playlist">−</button>':'')+'<button data-more="'+esc(t.id)+'" title="Editar">···</button></div></div>';
+}
 function listInto(sel,arr,opts={}){
  const element=$(sel);
  if(!element){console.warn('Nexus Player: contêiner de lista ausente:',sel);return;}
@@ -955,7 +978,7 @@ function renderPlaylists(){
  const ids=selected.trackIds;
  const items=ids.map(key=>tracks.find(track=>track.id===key)).filter(Boolean);
  $('#selected-playlist-count').textContent=items.length+' faixas';
- listInto('#playlist-track-list',items,{remove:true,empty:'Adicione músicas usando o seletor abaixo.'});
+ listInto('#playlist-track-list',items,{remove:true,reorder:true,empty:'Adicione músicas usando o seletor abaixo.'});
  const available=tracks.filter(track=>!isVideo(track)&&!ids.includes(track.id));
  const addTrackSelect=$('#playlist-add-track');
  if(addTrackSelect){
@@ -1621,6 +1644,124 @@ $('#delete-playlist').addEventListener('click',async()=>{
  try{await deletePlaylistRecord(p.id);selectedPlaylist=null;renderAll();notice('Playlist excluída.');}
  catch(error){console.error(error);notice(error.message||'Não foi possível excluir a playlist.');}
 });
+let playlistReorderPending=null,playlistReorderActive=null,playlistReorderIgnoreClickUntil=0;
+const playlistTrackList=$('#playlist-track-list');
+function clearPlaylistReorderClasses(){
+ document.querySelectorAll('#playlist-track-list .track-row').forEach(item=>item.classList.remove('is-dragging','drop-target'));
+ document.body.classList.remove('playlist-reordering');
+}
+function endPlaylistReorder(event,cancelled=false){
+ const pending=playlistReorderPending;
+ if(pending&&(!event||pending.pointerId===event.pointerId)){
+  clearTimeout(pending.timer);
+  playlistReorderPending=null;
+  if(!pending.started)return;
+ }
+ const state=playlistReorderActive;
+ if(!state|| (event&&state.pointerId!==event.pointerId))return;
+ playlistReorderActive=null;
+ playlistReorderIgnoreClickUntil=Date.now()+700;
+ try{if(state.handle.hasPointerCapture(state.pointerId))state.handle.releasePointerCapture(state.pointerId);}catch(_){}
+ state.handle.setAttribute('aria-pressed','false');
+ clearPlaylistReorderClasses();
+ if(cancelled){renderPlaylists();return;}
+ const playlist=playlists.find(item=>item.id===state.playlistId);
+ if(!playlist||selectedPlaylist!==state.playlistId){renderPlaylists();return;}
+ const movedIds=Array.from(playlistTrackList.children)
+  .filter(item=>item.matches('.track-row[data-play]'))
+  .map(item=>item.dataset.play);
+ const remainingIds=state.originalIds.filter(id=>!movedIds.includes(id));
+ const nextIds=[...movedIds,...remainingIds];
+ if(nextIds.length===state.originalIds.length&&nextIds.every((id,index)=>id===state.originalIds[index])){
+  renderPlaylists();
+  return;
+ }
+ playlist.trackIds=nextIds;
+ savePlaylistRecord(playlist).then(()=>{
+  renderPlaylists();
+  notice('Ordem das faixas atualizada.');
+ }).catch(error=>{
+  console.error('Nexus Player: falha ao salvar a nova ordem da playlist',error);
+  const currentPlaylist=playlists.find(item=>item.id===state.playlistId);
+  if(currentPlaylist)currentPlaylist.trackIds=state.originalIds.slice();
+  try{writePlaylistCache(playlists);}catch(_){}
+  renderPlaylists();
+  notice(error.message||'Não foi possível salvar a nova ordem.');
+ });
+}
+playlistTrackList.addEventListener('pointerdown',event=>{
+ const handle=event.target.closest('.row-drag-handle');
+ if(!handle|| (event.pointerType==='mouse'&&event.button!==0))return;
+ const row=handle.closest('.track-row[data-play]');
+ const playlist=playlists.find(item=>item.id===selectedPlaylist);
+ if(!row||!playlist)return;
+ if(playlistReorderPending)clearTimeout(playlistReorderPending.timer);
+ const state={
+  pointerId:event.pointerId,handle,row,playlistId:playlist.id,
+  originalIds:playlist.trackIds.slice(),startX:event.clientX,startY:event.clientY,
+  started:false,timer:null
+ };
+ state.timer=setTimeout(()=>{
+  if(playlistReorderPending!==state)return;
+  const currentPlaylist=playlists.find(item=>item.id===state.playlistId);
+  if(!currentPlaylist)return;
+  state.started=true;
+  playlistReorderPending=null;
+  playlistReorderActive=state;
+  row.classList.add('is-dragging');
+  document.body.classList.add('playlist-reordering');
+  handle.setAttribute('aria-pressed','true');
+  try{handle.setPointerCapture(state.pointerId);}catch(_){}
+ },380);
+ playlistReorderPending=state;
+});
+document.addEventListener('pointermove',event=>{
+ const pending=playlistReorderPending;
+ if(pending&&pending.pointerId===event.pointerId){
+  const distance=Math.hypot(event.clientX-pending.startX,event.clientY-pending.startY);
+  if(distance>12){clearTimeout(pending.timer);playlistReorderPending=null;}
+ }
+ const state=playlistReorderActive;
+ if(!state||state.pointerId!==event.pointerId)return;
+ event.preventDefault();
+ const underPointer=document.elementFromPoint(event.clientX,event.clientY);
+ const targetRow=underPointer&&underPointer.closest('#playlist-track-list .track-row[data-play]');
+ document.querySelectorAll('#playlist-track-list .track-row.drop-target').forEach(item=>item.classList.remove('drop-target'));
+ if(!targetRow||targetRow===state.row)return;
+ targetRow.classList.add('drop-target');
+ const rect=targetRow.getBoundingClientRect();
+ const insertBefore=event.clientY<rect.top+rect.height/2;
+ if(insertBefore)playlistTrackList.insertBefore(state.row,targetRow);
+ else playlistTrackList.insertBefore(state.row,targetRow.nextElementSibling);
+},{passive:false});
+document.addEventListener('pointerup',event=>endPlaylistReorder(event,false));
+document.addEventListener('pointercancel',event=>endPlaylistReorder(event,true));
+playlistTrackList.addEventListener('keydown',event=>{
+ const handle=event.target.closest('.row-drag-handle');
+ if(!handle||!['ArrowUp','ArrowDown'].includes(event.key))return;
+ const row=handle.closest('.track-row[data-play]');
+ const target=event.key==='ArrowUp'?row.previousElementSibling:row.nextElementSibling;
+ if(!row||!target||!target.matches('.track-row[data-play]'))return;
+ event.preventDefault();
+ const originalIds=playlists.find(item=>item.id===selectedPlaylist)?.trackIds.slice()||[];
+ if(event.key==='ArrowUp')playlistTrackList.insertBefore(row,target);
+ else playlistTrackList.insertBefore(target,row);
+ const p=playlists.find(item=>item.id===selectedPlaylist);
+ if(!p)return;
+ p.trackIds=Array.from(playlistTrackList.children).filter(item=>item.matches('.track-row[data-play]')).map(item=>item.dataset.play).concat(originalIds.filter(id=>!Array.from(playlistTrackList.children).some(item=>item.dataset.play===id)));
+ savePlaylistRecord(p).then(()=>{renderPlaylists();notice('Ordem das faixas atualizada.');}).catch(error=>{
+  const currentPlaylist=playlists.find(item=>item.id===selectedPlaylist);
+  if(currentPlaylist)currentPlaylist.trackIds=originalIds;
+  renderPlaylists();notice(error.message||'Não foi possível salvar a nova ordem.');
+ });
+});
+document.addEventListener('click',event=>{
+ const handle=event.target.closest('.row-drag-handle');
+ if(handle){event.preventDefault();event.stopPropagation();return;}
+ if(Date.now()<playlistReorderIgnoreClickUntil&&event.target.closest('#playlist-track-list .track-row')){
+  event.preventDefault();event.stopPropagation();
+ }
+},true);
 $('#playlist-track-list').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const p=playlists.find(x=>x.id===selectedPlaylist);if(!p)return;p.trackIds=p.trackIds.filter(x=>x!==b.dataset.remove);savePlaylistRecord(p).then(renderPlaylists).catch(error=>{console.error(error);notice(error.message||'Não foi possível atualizar a playlist.');});});
 
 
@@ -1643,10 +1784,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v31';
+   const key='nexus-player-sw-refreshed-v32';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=31',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=32',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
