@@ -534,6 +534,28 @@ html.pwa-standalone,html.pwa-standalone *{
  body:not(:has(#view-home.active)) .main{width:100%;max-width:760px;min-width:0;margin-left:auto;margin-right:auto}
  body:not(:has(#view-home.active)) .view{width:100%;min-width:0}
 }
+
+/* V37 · stabilize scrolling in the iOS Home Screen app */
+@media(max-width:780px){
+ html,body{overscroll-behavior-y:none}
+ body:not(:has(#view-home.active)) .topbar{
+  display:flex!important;
+  position:sticky;
+  top:env(safe-area-inset-top,0px);
+  z-index:75;
+  height:calc(64px + env(safe-area-inset-top,0px));
+  padding-top:env(safe-area-inset-top,0px);
+  margin:0;
+  background:linear-gradient(180deg,rgba(8,8,20,.98),rgba(8,8,20,.95));
+  border-bottom:1px solid var(--line);
+  -webkit-backdrop-filter:blur(16px);
+  backdrop-filter:blur(16px);
+ }
+ body:not(:has(#view-home.active)) .main{
+  overscroll-behavior-y:contain;
+  scroll-margin-top:0;
+ }
+}
 </style>
 </head>
 <body>
@@ -794,7 +816,7 @@ html.pwa-standalone,html.pwa-standalone *{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V36';
+const APP_VERSION='V37';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -920,6 +942,9 @@ function syncViewMode(){
 }
 function go(next){
  closeHomeMoreMenu();
+ // Tabs share one document in the standalone app. Always start each page at
+ // the real document top instead of inheriting an iOS-restored scroll offset.
+ try{window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0;}catch(_){}
  view=next;
  // Set the shell directly from the requested destination before rendering.
  document.body.classList.toggle('home-mode',next==='home');
@@ -1827,10 +1852,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v36';
+   const key='nexus-player-sw-refreshed-v37';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=36',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=37',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
