@@ -43,3 +43,19 @@ export function parseLibraryBackup(payload){
  for(const playlist of payload.playlists){if(playlistIds.has(playlist.id))throw new Error('O backup contém identificadores de playlist duplicados.');playlistIds.add(playlist.id);}
  return {tracks,playlists:payload.playlists};
 }
+
+export async function replaceLibraryData(database,tracks,playlists){
+ return new Promise((resolve,reject)=>{
+  let tx;
+  try{
+   tx=database.transaction(['tracks','playlists'],'readwrite');
+   const trackStore=tx.objectStore('tracks'),playlistStore=tx.objectStore('playlists');
+   trackStore.clear();playlistStore.clear();
+   tracks.forEach(track=>trackStore.put(track));
+   playlists.forEach(playlist=>playlistStore.put(playlist));
+  }catch(error){reject(error);return;}
+  tx.oncomplete=resolve;
+  tx.onerror=()=>reject(tx.error||new Error('Falha ao restaurar a biblioteca.'));
+  tx.onabort=()=>reject(tx.error||new Error('A restauração foi cancelada.'));
+ });
+}
