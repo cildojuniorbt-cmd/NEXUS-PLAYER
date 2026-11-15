@@ -1,13 +1,24 @@
 {
   "appId": "com.nexus.player",
-  "latestVersion": "V39",
-  "latestVersionCode": 39,
+  "latestVersion": "V40",
+  "latestVersionCode": 40,
   "minimumVersionCode": 1,
   "channel": "stable",
   "releaseDate": "2026-11-15",
-  "summary": "Fundação multiplataforma e preparação inicial para Android.",
+  "summary": "NEXUS ONLINE: pesquisa e reprodução de músicas do catálogo Audius.",
   "downloadUrl": "https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest",
   "history": [
+    {
+      "version": "V40",
+      "versionCode": 40,
+      "date": "2026-11-15",
+      "title": "NEXUS ONLINE",
+      "notes": [
+        "Pesquisa de músicas e artistas no catálogo Audius diretamente na página inicial.",
+        "Reprodução online integrada aos controles do NEXUS PLAYER.",
+        "Biblioteca local e playlists preservadas, sem necessidade de login Audius para pesquisar faixas públicas."
+      ]
+    },
     {
       "version": "V39",
       "versionCode": 39,
