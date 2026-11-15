@@ -62,3 +62,14 @@ Esta fundação gera um pacote Android inicial com a interface atual. Ela ainda 
 - A branch `main` permanece como versão web estável.
 - O desenvolvimento Android ocorre em `feature/android-native-foundation`.
 - A pasta `www` é gerada pelo script `scripts/prepare-web.mjs` e não deve ser editada manualmente.
+
+## NEXUS UPDATE
+
+O app consulta o manifesto remoto `update-manifest.json` ao iniciar e permite verificar novamente pela tela **Atualizações**. Quando uma versão superior à instalada é publicada no manifesto, a interface exibe um aviso com as opções de conferir a atualização agora ou lembrar mais tarde. A tela também apresenta o histórico de versões.
+
+Ao publicar uma versão:
+1. Atualize `APP_VERSION` em `index.html`.
+2. Atualize `latestVersion`, `latestVersionCode`, `summary`, `releaseDate`, `downloadUrl` e adicione as notas em `history` no `update-manifest.json`.
+3. Publique o pacote correspondente no canal indicado em `downloadUrl`.
+
+A camada atual fornece aviso e histórico para web/PWA e para o pacote Android. A instalação integrada sem baixar APK manualmente depende da distribuição pela Google Play e da integração Play In-App Updates, que será adicionada na etapa nativa. No iOS, a distribuição e atualização seguirão App Store/TestFlight.
