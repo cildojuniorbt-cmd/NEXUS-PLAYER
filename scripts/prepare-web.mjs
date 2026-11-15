@@ -10,7 +10,8 @@ const entries = [
   'update-manifest.json',
   'apple-touch-icon.png',
   'assets',
-  'icons'
+  'icons',
+  'scripts'
 ];
 
 await rm(output, { recursive: true, force: true });
