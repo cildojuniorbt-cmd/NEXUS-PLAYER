@@ -857,6 +857,15 @@ body.light .update-banner{background:linear-gradient(110deg,#f1e5fb,#f8f5ff);bor
       <button class="shortcut" id="more-import"><span class="shortcut-icon">＋</span><span><strong>Adicionar músicas</strong><small>Importar arquivos locais</small></span></button>
       <button class="shortcut" data-view="updates"><span class="shortcut-icon">↻</span><span><strong>Atualizações</strong><small>Verificar versão e novidades</small></span></button>
     </div>
+    <section class="side-panel section" aria-label="Backup da biblioteca">
+      <div class="section-heading"><div><span class="kicker">SEGURANÇA DA BIBLIOTECA</span><h2>Backup e restauração</h2><p>Salve suas músicas, vídeos, capas, favoritos e playlists em um arquivo para transferir ou recuperar sua biblioteca.</p></div></div>
+      <div class="toolbar-actions">
+        <button type="button" class="primary" id="backup-export">↓ Fazer backup</button>
+        <button type="button" class="soft-btn" id="backup-import">↑ Restaurar backup</button>
+        <input class="file-input" id="backup-file" type="file" accept=".json,application/json">
+      </div>
+      <p class="muted" id="backup-status" role="status" aria-live="polite">O backup não altera sua biblioteca atual.</p>
+    </section>
     <section class="accent-panel">
       <div class="accent-panel-heading"><div><span class="kicker">PERSONALIZAÇÃO</span><h2>Cor do player</h2><p>Escolha uma cor para os detalhes, controles e visualizador.</p></div><span class="accent-current" id="accent-current">Violeta</span></div>
       <div class="accent-options" id="accent-options" role="group" aria-label="Escolher cor do player">
@@ -1048,6 +1057,94 @@ async function deletePlaylistRecord(playlistId){
  try{await del('playlists',playlistId);indexedDBSaved=true;}catch(error){console.warn('Falha ao excluir do IndexedDB:',error);}
  if(!localSaved&&!indexedDBSaved)throw new Error('Não foi possível excluir a playlist.');
  return {localSaved,indexedDBSaved};
+}
+// NEXUS PLAYER: portable library backup. Audio and cover Blobs are encoded as base64.
+function bytesToBase64(buffer){
+ const bytes=new Uint8Array(buffer),chunk=0x8000;
+ let binary='';
+ for(let offset=0;offset<bytes.length;offset+=chunk)binary+=String.fromCharCode(...bytes.subarray(offset,Math.min(offset+chunk,bytes.length)));
+ return btoa(binary);
+}
+function base64ToBlob(encoded,type){
+ const binary=atob(String(encoded||''));
+ const bytes=new Uint8Array(binary.length);
+ for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+ return new Blob([bytes],{type:type||'application/octet-stream'});
+}
+async function serializeBackupTrack(track){
+ const record={...track};
+ delete record.blob;delete record.coverBlob;
+ return {
+  record,
+  blob:track.blob?{type:track.blob.type||'application/octet-stream',data:bytesToBase64(await track.blob.arrayBuffer())}:null,
+  coverBlob:track.coverBlob?{type:track.coverBlob.type||'application/octet-stream',data:bytesToBase64(await track.coverBlob.arrayBuffer())}:null
+ };
+}
+async function createLibraryBackup(){
+ if(!db)throw new Error('A biblioteca local ainda não está disponível.');
+ const storedTracks=await all('tracks');
+ const storedPlaylists=normalizePlaylists(await all('playlists'));
+ const payload={format:'nexus-player-library-backup',version:1,createdAt:new Date().toISOString(),trackCount:storedTracks.length,playlistCount:storedPlaylists.length,tracks:[],playlists:storedPlaylists};
+ for(let i=0;i<storedTracks.length;i++){
+  const track=storedTracks[i];
+  payload.tracks.push(await serializeBackupTrack(track));
+  const status=$('#backup-status');
+  if(status)status.textContent='Preparando backup: '+(i+1)+' de '+storedTracks.length+' arquivos...';
+ }
+ return payload;
+}
+async function exportLibraryBackup(){
+ const button=$('#backup-export'),status=$('#backup-status');
+ button.disabled=true;
+ if(status)status.textContent='Preparando seu backup...';
+ try{
+  const payload=await createLibraryBackup();
+  const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),anchor=document.createElement('a');
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  anchor.href=url;anchor.download='nexus-player-backup-'+stamp+'.json';
+  document.body.appendChild(anchor);anchor.click();anchor.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  if(status)status.textContent='Backup criado: '+payload.trackCount+' arquivos e '+payload.playlistCount+' playlists.';
+  notice('Backup da biblioteca criado com sucesso.');
+ }catch(error){
+  console.error('NEXUS BACKUP:',error);
+  if(status)status.textContent='Não foi possível criar o backup: '+(error.message||'erro desconhecido');
+  notice('Falha ao criar o backup.');
+ }finally{button.disabled=false;}
+}
+async function restoreLibraryBackup(file){
+ const status=$('#backup-status');
+ if(!db)throw new Error('A biblioteca local ainda não está disponível.');
+ if(!file) return;
+ if(status)status.textContent='Lendo e validando o arquivo de backup...';
+ const payload=JSON.parse(await file.text());
+ if(!payload||payload.format!=='nexus-player-library-backup'||payload.version!==1||!Array.isArray(payload.tracks)||!Array.isArray(payload.playlists))throw new Error('Esse arquivo não é um backup válido do NEXUS PLAYER.');
+ const restoredTracks=payload.tracks.map(item=>{
+  if(!item||!item.record||!item.record.id)throw new Error('O backup contém uma faixa inválida.');
+  return {...item.record,blob:item.blob?base64ToBlob(item.blob.data,item.blob.type):null,coverBlob:item.coverBlob?base64ToBlob(item.coverBlob.data,item.coverBlob.type):null};
+ });
+ const restoredPlaylists=normalizePlaylists(payload.playlists);
+ if(status)status.textContent='Restaurando '+restoredTracks.length+' arquivos e '+restoredPlaylists.length+' playlists...';
+ await new Promise((resolve,reject)=>{
+  let tx;
+  try{
+   tx=db.transaction(['tracks','playlists'],'readwrite');
+   const trackStore=tx.objectStore('tracks'),playlistStore=tx.objectStore('playlists');
+   trackStore.clear();playlistStore.clear();
+   restoredTracks.forEach(track=>trackStore.put(track));
+   restoredPlaylists.forEach(playlist=>playlistStore.put(playlist));
+  }catch(error){reject(error);return;}
+  tx.oncomplete=resolve;
+  tx.onerror=()=>reject(tx.error||new Error('Falha ao restaurar a biblioteca.'));
+  tx.onabort=()=>reject(tx.error||new Error('A restauração foi cancelada.'));
+ });
+ tracks=restoredTracks;playlists=restoredPlaylists;current=-1;onlineTrack=null;selectedPlaylist=null;queue=null;shuffleOrder=null;
+ try{writePlaylistCache(restoredPlaylists);}catch(error){console.warn('NEXUS BACKUP: cache de playlists não foi atualizado.',error);}
+ urls.forEach(url=>URL.revokeObjectURL(url));urls.clear();
+ renderAll();
+ if(status)status.textContent='Restauração concluída: '+restoredTracks.length+' arquivos e '+restoredPlaylists.length+' playlists.';
+ notice('Biblioteca restaurada com sucesso.');
 }
 function urlFor(t,cover=false){
  const key=t.id+(cover?':cover':'');
@@ -1847,6 +1944,17 @@ async function startNativeUpdate(){
  }catch(error){console.error('NEXUS UPDATE:',error);notice(error.message||'Não foi possível baixar a atualização.');updateProgressDetail.textContent=error.message||'Tente novamente mais tarde.';button.disabled=false;button.textContent='Tentar novamente';}
 }
 $('#updates-download').addEventListener('click',startNativeUpdate);
+$('#backup-export').addEventListener('click',exportLibraryBackup);
+$('#backup-import').addEventListener('click',()=>$('#backup-file').click());
+$('#backup-file').addEventListener('change',async event=>{
+ const file=event.target.files&&event.target.files[0];event.target.value='';
+ if(!file)return;
+ if(!confirm('Restaurar este backup vai substituir a biblioteca atual neste dispositivo. Faça um backup atual antes de continuar. Deseja prosseguir?'))return;
+ const button=$('#backup-import');button.disabled=true;
+ try{await restoreLibraryBackup(file);}
+ catch(error){console.error('NEXUS RESTORE:',error);$('#backup-status').textContent='Restauração não concluída: '+(error.message||'erro desconhecido');notice('Não foi possível restaurar o backup. A biblioteca atual foi preservada se a gravação não foi concluída.');}
+ finally{button.disabled=false;}
+});
 $('#add').addEventListener('click',()=>picker.click());$('#import-more').addEventListener('click',()=>picker.click());
 picker.addEventListener('change',()=>{importFiles(picker.files);picker.value='';});
 $('#home-import').addEventListener('click',()=>picker.click());$('#home-play').addEventListener('click',toggle);$('#home-prev').addEventListener('click',prev);$('#home-next').addEventListener('click',next);$('#home-shuffle').addEventListener('click',()=>{
