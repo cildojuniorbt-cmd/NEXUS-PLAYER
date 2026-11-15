@@ -12,6 +12,7 @@ on:
       - 'manifest.webmanifest'
       - 'sw.js'
       - 'package.json'
+      - 'README.md'
       - 'capacitor.config.ts'
       - 'scripts/**'
       - '.github/workflows/android-debug-apk.yml'
