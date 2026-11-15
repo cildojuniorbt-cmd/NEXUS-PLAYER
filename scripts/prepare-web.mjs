@@ -7,6 +7,7 @@ const entries = [
   'index.html',
   'manifest.webmanifest',
   'sw.js',
+  'update-manifest.json',
   'apple-touch-icon.png',
   'assets',
   'icons'
