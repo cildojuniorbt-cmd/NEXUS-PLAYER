@@ -587,7 +587,7 @@ html.pwa-standalone,html.pwa-standalone *{
   <header class="topbar">
     <div class="mobile-brand"><span class="brand-mark">N</span><span>NEXUS <em>PLAYER</em></span></div>
     <div class="search-wrap"><span class="search-icon">⌕</span><input class="search" id="search" type="search" placeholder="Buscar músicas, artistas e álbuns..." aria-label="Buscar"></div>
-    <div class="top-actions"><button class="round-btn" id="theme" title="Alternar tema">◐</button><button class="primary" id="add">＋ Adicionar músicas</button><input id="files" class="file-input" type="file" multiple accept="audio/*,video/*,.mp3,.wav,.wave,.flac,.m4a,.aac,.ogg,.opus,.mp4,.webm,.mov"></div>
+    <div class="top-actions"><button class="round-btn" id="theme" title="Alternar tema">◐</button><button class="primary" id="add">＋ Adicionar músicas</button><input id="files" class="file-input" type="file" multiple accept="audio/*,video/*,.mp3,.wav,.wave,.flac,.m4a,.m4b,.aac,.ogg,.opus,.mp4,.webm,.mov"></div>
   </header>
   
 
@@ -821,7 +821,7 @@ html.pwa-standalone,html.pwa-standalone *{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V39';
+const APP_VERSION='V40';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -937,13 +937,17 @@ function urlFor(t,cover=false){
  const key=t.id+(cover?':cover':'');
  let blob=cover?t.coverBlob:t.blob;
  if(!blob)return'';
- // WAV files selected from iOS Files may be reported as application/octet-stream
- // or audio/x-wav. Blob URLs have no filename extension, so normalize their
- // MIME type before creating the playback URL.
- if(!cover&&audioMimeFromName(t.name)==='audio/wav'&&String(blob.type||'').toLowerCase()!=='audio/wav'){
-  blob=new Blob([blob],{type:'audio/wav'});
-  t.blob=blob;
-  put('tracks',t).catch(error=>console.warn('Nexus Player: não foi possível salvar o tipo WAV normalizado.',error));
+ // iOS Files can assign generic or noncanonical MIME labels to WAV and M4A.
+ // Blob URLs do not retain the original filename, so normalize the MIME from
+ // the known audio extension before passing the source to the media element.
+ if(!cover&&!isVideo(t)){
+  const expectedMime=audioMimeFromName(t.name);
+  const currentMime=String(blob.type||'').toLowerCase();
+  if((expectedMime==='audio/wav'||expectedMime==='audio/mp4')&&currentMime!==expectedMime){
+   blob=new Blob([blob],{type:expectedMime});
+   t.blob=blob;
+   put('tracks',t).catch(error=>console.warn('Nexus Player: não foi possível salvar o MIME normalizado.',error));
+  }
  }
  if(!urls.has(key))urls.set(key,URL.createObjectURL(blob));
  return urls.get(key);
@@ -1368,11 +1372,11 @@ function prev(){
 }
 function audioMimeFromName(name){
  const extension=(String(name).match(/\.([^.]+)$/)||[])[1]?.toLowerCase()||'';
- const types={mp3:'audio/mpeg',wav:'audio/wav',wave:'audio/wav',flac:'audio/flac',m4a:'audio/mp4',mp4:'audio/mp4',aac:'audio/aac',ogg:'audio/ogg',opus:'audio/ogg',oga:'audio/ogg',webm:'audio/webm',mpga:'audio/mpeg'};
+ const types={mp3:'audio/mpeg',wav:'audio/wav',wave:'audio/wav',flac:'audio/flac',m4a:'audio/mp4',m4b:'audio/mp4',mp4:'audio/mp4',aac:'audio/aac',ogg:'audio/ogg',opus:'audio/ogg',oga:'audio/ogg',webm:'audio/webm',mpga:'audio/mpeg'};
  return types[extension]||'';
 }
 async function importFiles(files){
- const supported=/\.(mp3|wav|wave|flac|m4a|aac|ogg|opus|oga|mp4|webm|mov|m4v)$/i;
+ const supported=/\.(mp3|wav|wave|flac|m4a|m4b|aac|ogg|opus|oga|mp4|webm|mov|m4v)$/i;
  const accepted=Array.from(files||[]).filter(file=>{
   const declaredType=String(file.type||'').toLowerCase();
   return declaredType.startsWith('audio/')||declaredType.startsWith('video/')||supported.test(file.name);
@@ -1382,10 +1386,13 @@ async function importFiles(files){
  for(const file of accepted){
   const declaredType=String(file.type||'').toLowerCase();
   const extensionMime=audioMimeFromName(file.name);
-  // Always use the canonical WAV type. iOS Files can label WAV as
-  // application/octet-stream or audio/x-wav, which is unreliable on blob URLs.
-  const mime=extensionMime==='audio/wav'?'audio/wav':(declaredType||extensionMime);
-  const blob=(mime&&declaredType!==mime)?new Blob([file],{type:mime}):file;
+  // Canonicalize WAV and M4A from their extension. iOS Files may label
+  // these as application/octet-stream, audio/x-wav or audio/x-m4a.
+  // M4A is an MPEG-4 audio container and should be exposed as audio/mp4.
+  const canonicalMime=(extensionMime==='audio/wav'||extensionMime==='audio/mp4'&&/\.(m4a|m4b)$/i.test(file.name))
+   ?extensionMime:'';
+  const mime=canonicalMime||declaredType||extensionMime;
+  const blob=(mime&&String(file.type||'').toLowerCase()!==mime)?new Blob([file],{type:mime}):file;
   const isVideoFile=file.type.startsWith('video/')||/\.(mp4|webm|mov|m4v)$/i.test(file.name);
   const title=file.name.replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ');
   const track={id:id(),name:title,artist:'Artista desconhecido',album:'',kind:isVideoFile?'video':'audio',blob,coverBlob:null,favorite:false,addedAt:Date.now()+added.length};
@@ -1632,7 +1639,13 @@ function updateDuration(el){if(el!==media)return;$('#mini-duration').textContent
    renderPlayer();updateMediaSession();
  });
  el.addEventListener('ended',()=>{if(el===media&&!repeat)next();});
- el.addEventListener('error',()=>{if(el===media&&el.currentSrc)notice('Esse formato não é compatível com o navegador.');});
+ el.addEventListener('error',()=>{
+  if(el!==media||!el.currentSrc)return;
+  const track=currentTrack();
+  if(track&&/\.(m4a|m4b)$/i.test(track.name)){
+   notice('Não foi possível reproduzir este M4A. O suporte depende do codec dentro do arquivo.');
+  }else notice('Esse formato não é compatível com o navegador.');
+ });
 });
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden){
@@ -1879,10 +1892,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v39';
+   const key='nexus-player-sw-refreshed-v40';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=39',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=40',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
