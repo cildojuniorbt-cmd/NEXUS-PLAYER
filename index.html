@@ -902,7 +902,7 @@ body.light .update-banner{background:linear-gradient(110deg,#f1e5fb,#f8f5ff);bor
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V39';
+const APP_VERSION='V40';
 const UPDATE_MANIFEST_URL='https://raw.githubusercontent.com/cildojuniorbt-cmd/NEXUS-PLAYER/feature/android-native-foundation/update-manifest.json';
 let updateManifest=null,updateAvailable=false;
 function versionNumber(value){const match=String(value||'').match(/(\d+)/);return match?Number(match[1]):0;}
@@ -2091,10 +2091,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v39';
+   const key='nexus-player-sw-refreshed-v40';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=39',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=40',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
