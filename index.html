@@ -1103,19 +1103,7 @@ async function restoreLibraryBackup(file){
  const restoredTracks=restored.tracks;
  const restoredPlaylists=normalizePlaylists(restored.playlists);
  if(status)status.textContent='Restaurando '+restoredTracks.length+' arquivos e '+restoredPlaylists.length+' playlists...';
- await new Promise((resolve,reject)=>{
-  let tx;
-  try{
-   tx=db.transaction(['tracks','playlists'],'readwrite');
-   const trackStore=tx.objectStore('tracks'),playlistStore=tx.objectStore('playlists');
-   trackStore.clear();playlistStore.clear();
-   restoredTracks.forEach(track=>trackStore.put(track));
-   restoredPlaylists.forEach(playlist=>playlistStore.put(playlist));
-  }catch(error){reject(error);return;}
-  tx.oncomplete=resolve;
-  tx.onerror=()=>reject(tx.error||new Error('Falha ao restaurar a biblioteca.'));
-  tx.onabort=()=>reject(tx.error||new Error('A restauração foi cancelada.'));
- });
+ await core.replaceLibraryData(db,restoredTracks,restoredPlaylists);
  tracks=restoredTracks;playlists=restoredPlaylists;current=-1;onlineTrack=null;selectedPlaylist=null;queue=null;shuffleOrder=null;
  try{writePlaylistCache(restoredPlaylists);}catch(error){console.warn('NEXUS BACKUP: cache de playlists não foi atualizado.',error);}
  urls.forEach(url=>URL.revokeObjectURL(url));urls.clear();
