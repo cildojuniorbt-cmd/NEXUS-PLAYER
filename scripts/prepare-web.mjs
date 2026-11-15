@@ -23,4 +23,6 @@ for (const entry of entries) {
   });
 }
 
+await cp(resolve(root, 'node_modules/@capacitor/core/dist'), resolve(output, 'vendor/capacitor-core'), { recursive: true, force: true });
+
 console.log('NEXUS PLAYER web assets prepared in ./www');
