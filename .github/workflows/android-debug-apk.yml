@@ -35,6 +35,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      # No package-lock.json is committed, so npm cache is intentionally disabled.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
