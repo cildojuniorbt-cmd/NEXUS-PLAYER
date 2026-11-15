@@ -1,0 +1,23 @@
+{
+  "appId": "com.nexus.player",
+  "latestVersion": "V39",
+  "latestVersionCode": 39,
+  "minimumVersionCode": 1,
+  "channel": "stable",
+  "releaseDate": "2026-11-15",
+  "summary": "Fundação multiplataforma e preparação inicial para Android.",
+  "downloadUrl": "https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest",
+  "history": [
+    {
+      "version": "V39",
+      "versionCode": 39,
+      "date": "2026-11-15",
+      "title": "Fundação multiplataforma",
+      "notes": [
+        "Preparação inicial do aplicativo Android com Capacitor.",
+        "Estrutura de compilação automática do APK de teste.",
+        "Preservação da biblioteca local e das playlists existentes."
+      ]
+    }
+  ]
+}
