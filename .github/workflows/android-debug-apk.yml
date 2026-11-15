@@ -26,7 +26,7 @@ on:
       - '.github/workflows/android-debug-apk.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -154,6 +154,12 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Require permanent signing for official release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release && steps.signing.outputs.configured != 'true'
+        run: |
+          echo "::error::Configure the four NEXUS signing secrets before publishing an official update."
+          exit 1
 
       - name: Publish official Android release
         if: github.event_name == 'workflow_dispatch' && inputs.publish_release && steps.signing.outputs.configured == 'true'
