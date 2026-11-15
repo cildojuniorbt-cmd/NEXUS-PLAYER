@@ -608,6 +608,28 @@ body.light .update-banner{background:linear-gradient(110deg,#f1e5fb,#f8f5ff);bor
  .np-cover-area{width:min(46vw,500px)}
 }
 
+
+/* NEXUS ONLINE search */
+.nexus-online{position:relative;z-index:5;margin:10px auto 2px;width:min(100%,720px);padding:0 2px}
+.nexus-online-search{display:flex;align-items:center;gap:9px;padding:8px 10px 8px 15px;border:1px solid #604080;background:linear-gradient(120deg,#171329,#101426);border-radius:16px;box-shadow:0 8px 28px #0004}
+.nexus-online-search .online-search-icon{font-size:19px;color:#c77cff}
+.nexus-online-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#fff;padding:8px 0;font-size:14px}
+.nexus-online-search input::placeholder{color:#9189a7}
+.nexus-online-search button{border:0;border-radius:11px;padding:10px 14px;color:#fff;font-weight:750;background:linear-gradient(110deg,#a92feb,#6845ff 62%,#178ee5)}
+.nexus-online-label{display:flex;justify-content:space-between;gap:10px;margin:7px 4px 0;color:#8f89a8;font-size:10px;letter-spacing:.7px}
+.nexus-online-results{display:grid;gap:6px;margin-top:8px;max-height:min(38svh,310px);overflow:auto;overscroll-behavior:contain}
+.nexus-online-results:empty{display:none}
+.online-result{display:flex;align-items:center;gap:10px;min-width:0;padding:8px;border:1px solid #302746;border-radius:12px;background:#111122;color:#fff;text-align:left}
+.online-result:hover{border-color:#a951df;background:#1a1630}
+.online-result-cover{width:43px;height:43px;flex:none;border-radius:8px;object-fit:cover;background:linear-gradient(135deg,#57247e,#17304c)}
+.online-result-copy{flex:1;min-width:0}
+.online-result-copy b,.online-result-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.online-result-copy b{font-size:12px}
+.online-result-copy small{margin-top:3px;color:#a5a2ba;font-size:10px}
+.online-result-play{width:34px;height:34px;flex:none;border:0;border-radius:50%;background:linear-gradient(135deg,#ba43ff,#544cff);color:#fff;font-size:14px}
+.online-search-status{padding:12px 10px;text-align:center;color:#aaa3bd;font-size:11px;border:1px dashed #44345d;border-radius:11px}
+@media(max-width:780px){.nexus-online{margin:5px auto 0}.nexus-online-search{padding:7px 8px 7px 12px}.nexus-online-search input{font-size:13px}.nexus-online-search button{padding:9px 11px}.nexus-online-results{max-height:31svh}}
+
 </style>
 </head>
 <body>
@@ -649,6 +671,15 @@ body.light .update-banner{background:linear-gradient(110deg,#f1e5fb,#f8f5ff);bor
         </span>
         <button class="np-head-button" id="home-more" aria-label="Mais opções">•••</button>
       </header>
+      <section class="nexus-online" aria-label="Pesquisar músicas na internet">
+        <form class="nexus-online-search" id="nexus-online-form">
+          <span class="online-search-icon" aria-hidden="true">⌕</span>
+          <input id="nexus-online-query" type="search" autocomplete="off" enterkeyhint="search" placeholder="Pesquise na web: música ou artista..." aria-label="Pesquisar música na web">
+          <button id="nexus-online-submit" type="submit">Buscar</button>
+        </form>
+        <div class="nexus-online-label"><span>NEXUS ONLINE · AUDIUS</span><span>Catálogo independente</span></div>
+        <div class="nexus-online-results" id="nexus-online-results" aria-live="polite"></div>
+      </section>
       <div class="np-more-menu" id="home-more-menu" hidden>
         <button data-go="playlists">Playlists</button>
         <button data-go="player">Visualizador</button>
@@ -907,7 +938,7 @@ $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 let mediaSessionHandlersReady=false;
 const DB='nexus-player-db',DBV=3,frequencies=[60,150,400,1000,2500,6000,12000],freqLabels=['60','150','400','1k','2.5k','6k','12k'],presets={Flat:[0,0,0,0,0,0,0],Rock:[5,3,-1,1,3,4,4],Pop:[-1,2,4,3,0,-1,1],Indie:[3,1,0,2,3,2,1],Acoustic:[2,2,1,0,2,3,2]};
-let db,tracks=[],playlists=[],current=-1,media=audio,view='home',libraryFilter='all',genre='all',selectedPlaylist=null,queue=null,shuffle=false,repeat=false,shuffleOrder=null,ctx=null,graphs=new WeakMap(),graphList=[],analyser=null,raf=0,urls=new Map(),toastTimer,vizStyle='waves',visualizerStarted=false,visualizerDraw=null,visualizerResize=null,lastMediaSessionPositionAt=0,lastMediaSessionTrackKey=null,lastMediaSessionState=null;
+let db,tracks=[],playlists=[],current=-1,onlineTrack=null,onlineQueue=[],onlineIndex=-1,media=audio,view='home',libraryFilter='all',genre='all',selectedPlaylist=null,queue=null,shuffle=false,repeat=false,shuffleOrder=null,ctx=null,graphs=new WeakMap(),graphList=[],analyser=null,raf=0,urls=new Map(),toastTimer,vizStyle='waves',visualizerStarted=false,visualizerDraw=null,visualizerResize=null,lastMediaSessionPositionAt=0,lastMediaSessionTrackKey=null,lastMediaSessionState=null;
 let eq={enabled:true,bands:[0,0,0,0,0,0,0],bass:0,treble:0,virtualizer:0,preset:'Flat'};
 try{const saved=JSON.parse(localStorage.getItem('nexus-eq')||'null');if(saved)eq={...eq,...saved};}catch(_){}
 const visualizerNames={waves:'Ondas 3D',spectrum:'Espectro',particles:'Partículas',circular:'Circular',vortex:'Vórtice',cube:'Cubo',pulse:'Pulso',rings:'Anéis',mirror:'Espelhado',scope:'Osciloscópio',aurora:'Aurora',tunnel:'Túnel'};
@@ -1088,7 +1119,7 @@ window.addEventListener('resize',updateAdaptiveDisplay,{passive:true});
 window.addEventListener('orientationchange',updateAdaptiveDisplay,{passive:true});
 window.visualViewport?.addEventListener('resize',updateAdaptiveDisplay,{passive:true});
 
-function currentTrack(){return tracks[current]||null;}
+function currentTrack(){return tracks[current]||onlineTrack||null;}
 function updateCoverProgress(){
  const area=$('.np-cover-area');if(!area)return;
  const ratio=media&&Number.isFinite(media.duration)&&media.duration>0?media.currentTime/media.duration:0;
@@ -1197,7 +1228,7 @@ function renderPlayer(){
  $('#mini-artist').textContent=t?(t.artist||'Artista desconhecido'):'Escolha uma música';
  $('#mini-play').textContent=playing?'Ⅱ':'▶';
  $('#home-title').textContent=t?t.name:'Selecione uma música';
- $('#home-artist').textContent=t?(t.artist||'Artista desconhecido'):'Abra a Biblioteca e escolha uma faixa';
+ $('#home-artist').textContent=t?(t.artist||'Artista desconhecido'):(onlineTrack?'Reprodução online · Audius':'Abra a Biblioteca e escolha uma faixa');
  $('#home-favorite').textContent=t&&t.favorite?'♥':'♡';
  $('#home-favorite').disabled=!t;
  $('#home-favorite').setAttribute('aria-label',t&&t.favorite?'Remover dos favoritos':'Adicionar aos favoritos');
@@ -1299,11 +1330,11 @@ function setPlaybackAudioSession(){
 function updateMediaSession(force=false){
  if(!('mediaSession' in navigator))return;
  const session=navigator.mediaSession,track=currentTrack();
- const trackKey=track?[track.id,track.name,track.artist,track.album,track.coverBlob?1:0].join('|'):null;
+ const trackKey=track?[track.id,track.name,track.artist,track.album,track.coverBlob?1:0,track.coverUrl||''].join('|'):null;
  try{
   if(force||lastMediaSessionTrackKey!==trackKey){
    if(track&&'MediaMetadata' in window){
-    const artwork=track.coverBlob?urlFor(track,true):'';
+    const artwork=track.coverBlob?urlFor(track,true):(track.coverUrl||'');
     session.metadata=new MediaMetadata({title:track.name||'Nexus Player',artist:track.artist||'Artista desconhecido',album:track.album||'Nexus Player',artwork:artwork?[{src:artwork,sizes:'512x512'}]:[]});
    }else session.metadata=null;
    lastMediaSessionTrackKey=trackKey;
@@ -1407,6 +1438,7 @@ function resetPlaybackQueue(){
 function selectTrack(trackId,queueIds,options={}){
  const index=tracks.findIndex(track=>track.id===trackId);
  if(index<0||isVideo(tracks[index]))return;
+ onlineTrack=null;onlineQueue=[];onlineIndex=-1;
  const nextQueue=playableQueue(queueIds&&queueIds.length?queueIds:libraryQueue());
  if(!nextQueue.includes(trackId))nextQueue.unshift(trackId);
  const preserveOrder=!!options.preserveOrder&&sameQueue(queue,nextQueue);
@@ -1429,6 +1461,11 @@ function toggle(){
  if(media.paused)startPlayback();else media.pause();
 }
 function next(){
+ if(onlineTrack){
+  if(onlineIndex<onlineQueue.length-1){playOnlineTrack(onlineIndex+1);return;}
+  if(repeat){media.currentTime=0;startPlayback();}else{media.pause();media.currentTime=0;}
+  return;
+ }
  const currentId=currentTrack()&&currentTrack().id;
  const ids=activeQueue();
  if(!ids.length)return;
@@ -1452,6 +1489,7 @@ function next(){
  if(nextId)selectTrack(nextId,ids,{preserveOrder:true});
 }
 function prev(){
+ if(onlineTrack){if(media.currentTime>3){media.currentTime=0;return;}if(onlineIndex>0)playOnlineTrack(onlineIndex-1);else media.currentTime=0;return;}
  if(media.currentTime>3){media.currentTime=0;return;}
  const currentId=currentTrack()&&currentTrack().id;
  const ids=activeQueue();
@@ -1974,6 +2012,71 @@ document.body.addEventListener('click',e=>{const demoAlbum=e.target.closest('[da
 document.body.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-play]')){e.preventDefault();const contextQueue=queueForTrackElement(e.target,e.target.dataset.play);selectTrack(e.target.dataset.play,contextQueue);}});
 function mediaSession(t){if(!('mediaSession'in navigator)||!t)return;try{navigator.mediaSession.metadata=new MediaMetadata({title:t.name,artist:t.artist||'Nexus Player',album:t.album||'Biblioteca'});navigator.mediaSession.setActionHandler('play',toggle);navigator.mediaSession.setActionHandler('pause',()=>media.pause());navigator.mediaSession.setActionHandler('previoustrack',prev);navigator.mediaSession.setActionHandler('nexttrack',next);}catch(_){}}
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search').focus();}if(e.code==='Space'&&!['INPUT','TEXTAREA','BUTTON','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();toggle();}});
+
+const AUDIUS_API='https://api.audius.co/v1';
+let onlineSearchSequence=0;
+async function searchAudius(query){
+ const results=$('#nexus-online-results'),button=$('#nexus-online-submit');
+ const term=String(query||'').trim();
+ if(!term){results.innerHTML='<div class="online-search-status">Digite o nome de uma música ou artista.</div>';return;}
+ const sequence=++onlineSearchSequence;
+ button.disabled=true;button.textContent='...';
+ results.innerHTML='<div class="online-search-status">Pesquisando no catálogo Audius…</div>';
+ try{
+  const url=AUDIUS_API+'/tracks/search?query='+encodeURIComponent(term)+'&limit=18&app_name=NEXUS_PLAYER';
+  let response=await fetch(url,{headers:{Accept:'application/json'}});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  let payload=await response.json();
+  let items=Array.isArray(payload.data)?payload.data:[];
+  if(sequence!==onlineSearchSequence)return;
+  if(!items.length){results.innerHTML='<div class="online-search-status">Nenhuma faixa encontrada. Tente outro nome ou artista.</div>';return;}
+  onlineQueue=items.filter(track=>track&&track.id);
+  results.innerHTML=onlineQueue.map((track,index)=>{
+   const artwork=track.artwork&& (track.artwork['150x150']||track.artwork['480x480']||track.artwork['1000x1000']);
+   const title=esc(track.title||'Faixa sem título');
+   const artist=esc(track.user&&track.user.name||'Artista independente');
+   const cover=artwork&&/^https:\/\//i.test(artwork)?'<img class="online-result-cover" src="'+esc(artwork)+'" alt="" loading="lazy">':'<span class="online-result-cover" aria-hidden="true" style="display:grid;place-items:center">♫</span>';
+   const duration=Number.isFinite(track.duration)?' · '+fmt(track.duration):'';
+   return '<button class="online-result" type="button" data-online-index="'+index+'">'+cover+'<span class="online-result-copy"><b>'+title+'</b><small>'+artist+duration+'</small></span><span class="online-result-play" aria-hidden="true">▶</span></button>';
+  }).join('');
+ }catch(error){
+  console.error('NEXUS ONLINE / Audius:',error);
+  if(sequence===onlineSearchSequence)results.innerHTML='<div class="online-search-status">Não foi possível pesquisar agora. Verifique a conexão e tente novamente.</div>';
+ }finally{
+  if(sequence===onlineSearchSequence){button.disabled=false;button.textContent='Buscar';}
+ }
+}
+async function playOnlineTrack(index){
+ const track=onlineQueue[index];
+ if(!track)return;
+ onlineIndex=index;
+ onlineTrack={
+  id:'audius:'+track.id,
+  name:track.title||'Faixa sem título',
+  artist:track.user&&track.user.name||'Artista independente',
+  album:'Audius · NEXUS ONLINE',
+  coverUrl:track.artwork&&(track.artwork['480x480']||track.artwork['150x150']||track.artwork['1000x1000'])||'',
+  favorite:false,
+  online:true
+ };
+ current=-1;queue=[];shuffleOrder=null;
+ video.pause();video.removeAttribute('src');video.load();
+ audio.pause();audio.removeAttribute('src');audio.load();
+ media=audio;media.muted=false;media.volume=1;
+ media.src=AUDIUS_API+'/tracks/'+encodeURIComponent(track.id)+'/stream?app_name=NEXUS_PLAYER';
+ media.load();
+ renderPlayer();updateMediaSession(true);
+ startPlayback();
+}
+$('#nexus-online-form').addEventListener('submit',event=>{
+ event.preventDefault();
+ searchAudius($('#nexus-online-query').value);
+});
+$('#nexus-online-results').addEventListener('click',event=>{
+ const button=event.target.closest('[data-online-index]');
+ if(button)playOnlineTrack(Number(button.dataset.onlineIndex));
+});
+
 async function boot(){
  syncViewMode();
  try{db=await openDB();}catch(error){console.error('IndexedDB indisponível:',error);db=null;}
