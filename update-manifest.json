@@ -1,13 +1,24 @@
 {
   "appId": "com.nexus.player",
-  "latestVersion": "V40",
-  "latestVersionCode": 40,
+  "latestVersion": "V41",
+  "latestVersionCode": 41,
   "minimumVersionCode": 1,
   "channel": "stable",
   "releaseDate": "2026-11-15",
-  "summary": "NEXUS ONLINE: pesquisa e reprodução de músicas do catálogo Audius.",
-  "downloadUrl": "https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest",
+  "summary": "NEXUS UPDATE: download do APK, progresso e abertura do instalador Android.",
+  "downloadUrl": "https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest/download/app-release.apk",
   "history": [
+    {
+      "version": "V41",
+      "versionCode": 41,
+      "date": "2026-11-15",
+      "title": "NEXUS UPDATE",
+      "notes": [
+        "Preparação do atualizador nativo para Android.",
+        "Download do APK com acompanhamento de progresso.",
+        "Abertura do instalador oficial do Android com confirmação do usuário."
+      ]
+    },
     {
       "version": "V40",
       "versionCode": 40,
@@ -30,5 +41,6 @@
         "Preservação da biblioteca local e das playlists existentes."
       ]
     }
-  ]
+  ],
+  "apkUrl": "https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest/download/app-release.apk"
 }
