@@ -568,6 +568,11 @@ html.pwa-standalone,html.pwa-standalone *{
 .update-banner-copy{flex:1;min-width:0}.update-banner-copy strong{display:block;font-size:13px}.update-banner-copy small{display:block;color:#c0b4d2;font-size:11px;margin-top:3px}
 .update-banner-actions{display:flex;gap:7px;align-items:center}.update-banner-actions button{border:1px solid #70469b;border-radius:9px;padding:8px 11px;background:#4a2468;color:white;font-weight:700;font-size:11px}.update-banner-actions .update-later{background:transparent;color:#c8bdd7}
 .update-card{max-width:850px;border:1px solid var(--line);border-radius:17px;padding:20px;background:linear-gradient(145deg,#17152a,#0e1020);margin:18px 0}
+.update-download-button{display:none;border:0;border-radius:11px;padding:12px 17px;background:linear-gradient(110deg,#a92feb,#6845ff 62%,#178ee5);color:white;font-weight:800}
+.update-progress{display:none;margin-top:16px;padding:14px;border:1px solid #7144a0;border-radius:12px;background:#0b0b18}
+.update-progress.visible{display:block}.update-progress-head{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:750}
+.update-progress-track{height:9px;overflow:hidden;border-radius:9px;background:#29243a;margin-top:10px}.update-progress-fill{height:100%;width:0;background:linear-gradient(90deg,#c34dff,#32c9ed);transition:width .2s}
+.update-progress small{display:block;color:var(--muted);margin-top:7px;font-size:11px}
 .update-history{display:grid;gap:10px;margin-top:18px}.update-history-item{padding:15px;border:1px solid var(--line);border-radius:13px;background:#111122}.update-history-item strong{display:block}.update-history-item small{display:block;color:var(--muted);margin:4px 0 8px}.update-history-item ul{margin:0;padding-left:19px;color:#d6cce7;font-size:12px}
 .update-status{display:inline-flex;align-items:center;gap:7px;color:#9ce8bd;font-size:12px;font-weight:750}.update-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#37d889;box-shadow:0 0 10px #37d88988}
 body.light .update-banner{background:linear-gradient(110deg,#f1e5fb,#f8f5ff);border-color:#d4b5eb}body.light .update-banner-copy small,body.light .update-history-item ul{color:#574c66}body.light .update-card,body.light .update-history-item{background:#fff}
@@ -878,7 +883,7 @@ body.light .update-banner{background:linear-gradient(110deg,#f1e5fb,#f8f5ff);bor
   </section>
 
   <section class="view" id="view-favorites"><div class="view-toolbar"><div><span class="kicker">SELEÇÃO ESPECIAL</span><h2>Favoritos</h2></div></div><div class="track-list" id="favorites-list"></div></section>
-  <section class="view" id="view-updates"><div class="view-toolbar"><div><span class="kicker">NEXUS UPDATE</span><h2>Atualizações</h2><p>Novidades, melhorias e histórico de versões.</p></div><div class="toolbar-actions"><button class="soft-btn" id="updates-check">↻ Verificar novamente</button></div></div><div class="update-card"><span class="kicker">VERSÃO INSTALADA</span><h2 style="margin:7px 0 4px">NEXUS PLAYER <span id="updates-current-version">V39</span></h2><p style="margin:0 0 12px;color:var(--muted);font-size:12px" id="updates-latest-copy">Conferindo versão mais recente...</p><span class="update-status" id="updates-status">Aplicativo atualizado</span><div style="margin-top:16px"><a id="updates-download" href="https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest" target="_blank" rel="noopener" style="display:none;color:#d4a1ff;font-weight:750">Abrir atualização disponível ↗</a></div></div><div class="section-heading"><div><h2>Histórico de versões</h2><p>Veja o que mudou em cada lançamento.</p></div></div><div class="update-history" id="update-history-list"></div></section>
+  <section class="view" id="view-updates"><div class="view-toolbar"><div><span class="kicker">NEXUS UPDATE</span><h2>Atualizações</h2><p>Novidades, melhorias e histórico de versões.</p></div><div class="toolbar-actions"><button class="soft-btn" id="updates-check">↻ Verificar novamente</button></div></div><div class="update-card"><span class="kicker">VERSÃO INSTALADA</span><h2 style="margin:7px 0 4px">NEXUS PLAYER <span id="updates-current-version">V39</span></h2><p style="margin:0 0 12px;color:var(--muted);font-size:12px" id="updates-latest-copy">Conferindo versão mais recente...</p><span class="update-status" id="updates-status">Aplicativo atualizado</span><div style="margin-top:16px"><button type="button" class="update-download-button" id="updates-download">⬇ Baixar e instalar atualização</button><div class="update-progress" id="update-progress" aria-live="polite"><div class="update-progress-head"><span id="update-progress-label">Preparando download...</span><strong id="update-progress-percent">0%</strong></div><div class="update-progress-track"><div class="update-progress-fill" id="update-progress-fill"></div></div><small id="update-progress-detail">O download continuará em segundo plano.</small></div></div></div><div class="section-heading"><div><h2>Histórico de versões</h2><p>Veja o que mudou em cada lançamento.</p></div></div><div class="update-history" id="update-history-list"></div></section>
 </main>
 <nav class="np-global-dock" aria-label="Navegação principal">
   <button data-view="home" class="active"><span>⌂</span><small>Início</small></button>
@@ -921,7 +926,7 @@ function renderUpdateState(){
  if(dot)dot.hidden=!updateAvailable;
  if(status){status.textContent=updateAvailable?'Nova versão disponível':'Aplicativo atualizado';status.style.color=updateAvailable?'#d6a2ff':'';}
  if(latestCopy)latestCopy.textContent=updateAvailable?'A versão mais recente é '+latest+'. Sua versão instalada é '+APP_VERSION+'.':'Você está usando a versão mais recente publicada ('+latest+').';
- if(download){download.style.display=updateAvailable?'inline-block':'none';download.href=updateManifest.downloadUrl||'https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest';}
+ if(download){download.style.display=updateAvailable?'inline-block':'none';download.textContent='⬇ Baixar e instalar '+latest;}
  $('#updates-current-version').textContent=APP_VERSION;
  renderUpdateHistory();
 }
@@ -1802,6 +1807,46 @@ $('#updates-shortcut').addEventListener('click',()=>go('updates'));
 $('#update-open').addEventListener('click',()=>go('updates'));
 $('#update-later').addEventListener('click',()=>{if(updateManifest){localStorage.setItem('nexus-update-dismissed',String(updateManifest.latestVersion||''));renderUpdateState();}});
 $('#updates-check').addEventListener('click',async()=>{await checkForUpdates();notice(updateAvailable?'Nova atualização encontrada!':'Você já está com a versão mais recente.');});
+const updateProgress=$('#update-progress'),updateProgressFill=$('#update-progress-fill'),updateProgressPercent=$('#update-progress-percent'),updateProgressLabel=$('#update-progress-label'),updateProgressDetail=$('#update-progress-detail');
+function showUpdateProgress(label,percent,detail){
+ updateProgress.classList.add('visible');
+ updateProgressLabel.textContent=label;
+ updateProgressPercent.textContent=percent+'%';
+ updateProgressFill.style.width=percent+'%';
+ updateProgressDetail.textContent=detail||'';
+}
+async function startNativeUpdate(){
+ const plugin=window.NexusUpdater;
+ if(!plugin){notice('O instalador automático está disponível somente no aplicativo Android.');return;}
+ const url=updateManifest&&(updateManifest.apkUrl||updateManifest.downloadUrl);
+ if(!url||!url.toLowerCase().includes('.apk')){notice('O APK desta versão ainda não foi publicado.');return;}
+ const fileName='nexus-player-'+String(updateManifest.latestVersion||'update').toLowerCase()+'.apk';
+ const button=$('#updates-download');button.disabled=true;button.textContent='Preparando...';
+ try{
+  const started=await plugin.startDownload({url,fileName});
+  const id=started.downloadId;
+  showUpdateProgress('Baixando atualização',0,'Você pode continuar usando o aplicativo.');
+  let finished=false;
+  while(!finished){
+   await new Promise(resolve=>setTimeout(resolve,900));
+   const status=await plugin.getDownloadStatus({downloadId:id});
+   const percent=Number(status.progress)||0;
+   showUpdateProgress(status.status==='completed'?'Download concluído':status.status==='failed'?'Falha no download':'Baixando atualização',percent,status.totalBytes>0?Math.round(status.downloadedBytes/1024/1024*10)/10+' MB de '+Math.round(status.totalBytes/1024/1024*10)/10+' MB':'Aguardando dados do servidor...');
+   if(status.status==='completed'){
+    finished=true;
+    const result=await plugin.installApk({fileName});
+    if(result.permissionRequired){
+     showUpdateProgress('Permissão necessária',100,'Autorize o NEXUS PLAYER a instalar APKs nas configurações do Android. Depois volte e toque em Instalar atualização.');
+     button.disabled=false;button.textContent='Instalar atualização';return;
+    }
+    showUpdateProgress('Instalador aberto',100,'Confirme a atualização na tela do Android.');
+    button.disabled=false;button.textContent='Abrir instalador novamente';return;
+   }
+   if(status.status==='failed')throw new Error('O Android informou falha no download. Código: '+status.reason);
+  }
+ }catch(error){console.error('NEXUS UPDATE:',error);notice(error.message||'Não foi possível baixar a atualização.');updateProgressDetail.textContent=error.message||'Tente novamente mais tarde.';button.disabled=false;button.textContent='Tentar novamente';}
+}
+$('#updates-download').addEventListener('click',startNativeUpdate);
 $('#add').addEventListener('click',()=>picker.click());$('#import-more').addEventListener('click',()=>picker.click());
 picker.addEventListener('change',()=>{importFiles(picker.files);picker.value='';});
 $('#home-import').addEventListener('click',()=>picker.click());$('#home-play').addEventListener('click',toggle);$('#home-prev').addEventListener('click',prev);$('#home-next').addEventListener('click',next);$('#home-shuffle').addEventListener('click',()=>{
@@ -2100,5 +2145,9 @@ if('serviceWorker'in navigator&&location.protocol==='https:'){
  });
 }
 })();
+</script>
+<script type="module">
+import { registerPlugin } from './vendor/capacitor-core/index.js';
+window.NexusUpdater = registerPlugin('NexusUpdater');
 </script>
 </body></html>
