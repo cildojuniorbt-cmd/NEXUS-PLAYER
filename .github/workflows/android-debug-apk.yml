@@ -11,6 +11,7 @@ on:
       - 'icons/**'
       - 'manifest.webmanifest'
       - 'sw.js'
+      - 'update-manifest.json'
       - 'package.json'
       - 'README.md'
       - 'capacitor.config.ts'
