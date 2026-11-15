@@ -561,6 +561,18 @@ html.pwa-standalone,html.pwa-standalone *{
   overscroll-behavior-y:auto;
  }
 }
+
+/* NEXUS UPDATE */
+.update-banner{display:none;align-items:center;gap:14px;margin:14px 0 4px;padding:14px 16px;border:1px solid #8650bd88;border-radius:14px;background:linear-gradient(110deg,#28143d,#17172d);box-shadow:0 8px 28px #0003}
+.update-banner.visible{display:flex}.update-banner-icon{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:12px;background:#8b3fc533;font-size:20px}
+.update-banner-copy{flex:1;min-width:0}.update-banner-copy strong{display:block;font-size:13px}.update-banner-copy small{display:block;color:#c0b4d2;font-size:11px;margin-top:3px}
+.update-banner-actions{display:flex;gap:7px;align-items:center}.update-banner-actions button{border:1px solid #70469b;border-radius:9px;padding:8px 11px;background:#4a2468;color:white;font-weight:700;font-size:11px}.update-banner-actions .update-later{background:transparent;color:#c8bdd7}
+.update-card{max-width:850px;border:1px solid var(--line);border-radius:17px;padding:20px;background:linear-gradient(145deg,#17152a,#0e1020);margin:18px 0}
+.update-history{display:grid;gap:10px;margin-top:18px}.update-history-item{padding:15px;border:1px solid var(--line);border-radius:13px;background:#111122}.update-history-item strong{display:block}.update-history-item small{display:block;color:var(--muted);margin:4px 0 8px}.update-history-item ul{margin:0;padding-left:19px;color:#d6cce7;font-size:12px}
+.update-status{display:inline-flex;align-items:center;gap:7px;color:#9ce8bd;font-size:12px;font-weight:750}.update-status:before{content:"";width:7px;height:7px;border-radius:50%;background:#37d889;box-shadow:0 0 10px #37d88988}
+body.light .update-banner{background:linear-gradient(110deg,#f1e5fb,#f8f5ff);border-color:#d4b5eb}body.light .update-banner-copy small,body.light .update-history-item ul{color:#574c66}body.light .update-card,body.light .update-history-item{background:#fff}
+@media(max-width:680px){.update-banner{align-items:flex-start;flex-wrap:wrap}.update-banner-actions{width:100%;justify-content:flex-end}.update-banner-actions button{flex:1}.update-card{padding:15px}}
+
 </style>
 </head>
 <body>
@@ -574,6 +586,7 @@ html.pwa-standalone,html.pwa-standalone *{
     <button data-view="playlists"><span class="ico">▤</span> Playlists</button>
     <button data-view="explore"><span class="ico">⌕</span> Explorar</button>
     <button data-view="favorites"><span class="ico">♡</span> Favoritos</button>
+    <button data-view="updates"><span class="ico">↻</span> Atualizações <span id="update-nav-dot" hidden style="margin-left:auto;color:#d77cff">●</span></button>
   </nav>
   <div class="nav-label">ÁUDIO</div>
   <nav class="nav">
@@ -587,9 +600,9 @@ html.pwa-standalone,html.pwa-standalone *{
   <header class="topbar">
     <div class="mobile-brand"><span class="brand-mark">N</span><span>NEXUS <em>PLAYER</em></span></div>
     <div class="search-wrap"><span class="search-icon">⌕</span><input class="search" id="search" type="search" placeholder="Buscar músicas, artistas e álbuns..." aria-label="Buscar"></div>
-    <div class="top-actions"><button class="round-btn" id="theme" title="Alternar tema">◐</button><button class="primary" id="add">＋ Adicionar músicas</button><input id="files" class="file-input" type="file" multiple accept="audio/*,video/*,.mp3,.wav,.wave,.flac,.m4a,.aac,.ogg,.opus,.mp4,.webm,.mov"></div>
+    <div class="top-actions"><button class="round-btn" id="theme" title="Alternar tema">◐</button><button class="round-btn" id="updates-shortcut" title="Atualizações" aria-label="Atualizações">♧</button><button class="primary" id="add">＋ Adicionar músicas</button><input id="files" class="file-input" type="file" multiple accept="audio/*,video/*,.mp3,.wav,.wave,.flac,.m4a,.aac,.ogg,.opus,.mp4,.webm,.mov"></div>
   </header>
-  
+  <section class="update-banner" id="update-banner" role="status" aria-live="polite"><span class="update-banner-icon">↻</span><div class="update-banner-copy"><strong id="update-banner-title">Nova versão disponível</strong><small id="update-banner-copy">Confira as novidades do NEXUS PLAYER.</small></div><div class="update-banner-actions"><button type="button" id="update-open">Ver atualização</button><button type="button" class="update-later" id="update-later">Depois</button></div></section>
 
   <section class="view active" id="view-home">
     <div class="np-home-screen">
@@ -798,6 +811,7 @@ html.pwa-standalone,html.pwa-standalone *{
   </section>
 
   <section class="view" id="view-favorites"><div class="view-toolbar"><div><span class="kicker">SELEÇÃO ESPECIAL</span><h2>Favoritos</h2></div></div><div class="track-list" id="favorites-list"></div></section>
+  <section class="view" id="view-updates"><div class="view-toolbar"><div><span class="kicker">NEXUS UPDATE</span><h2>Atualizações</h2><p>Novidades, melhorias e histórico de versões.</p></div><div class="toolbar-actions"><button class="soft-btn" id="updates-check">↻ Verificar novamente</button></div></div><div class="update-card"><span class="kicker">VERSÃO INSTALADA</span><h2 style="margin:7px 0 4px">NEXUS PLAYER <span id="updates-current-version">V39</span></h2><p style="margin:0 0 12px;color:var(--muted);font-size:12px" id="updates-latest-copy">Conferindo versão mais recente...</p><span class="update-status" id="updates-status">Aplicativo atualizado</span><div style="margin-top:16px"><a id="updates-download" href="https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest" target="_blank" rel="noopener" style="display:none;color:#d4a1ff;font-weight:750">Abrir atualização disponível ↗</a></div></div><div class="section-heading"><div><h2>Histórico de versões</h2><p>Veja o que mudou em cada lançamento.</p></div></div><div class="update-history" id="update-history-list"></div></section>
 </main>
 <nav class="np-global-dock" aria-label="Navegação principal">
   <button data-view="home" class="active"><span>⌂</span><small>Início</small></button>
@@ -822,6 +836,36 @@ html.pwa-standalone,html.pwa-standalone *{
 'use strict';
 const $=s=>document.querySelector(s);
 const APP_VERSION='V39';
+const UPDATE_MANIFEST_URL='https://cildojuniorbt-cmd.github.io/NEXUS-PLAYER/update-manifest.json';
+let updateManifest=null,updateAvailable=false;
+function versionNumber(value){const match=String(value||'').match(/(\\d+)/);return match?Number(match[1]):0;}
+function renderUpdateHistory(){
+ const list=$('#update-history-list');if(!list)return;
+ const history=updateManifest&&Array.isArray(updateManifest.history)?updateManifest.history:[];
+ list.innerHTML=history.length?history.map(item=>'<article class="update-history-item"><strong>'+esc(item.version||'Versão')+' · '+esc(item.title||'Atualização')+'</strong><small>'+esc(item.date||'')+'</small><ul>'+((Array.isArray(item.notes)?item.notes:[]).map(note=>'<li>'+esc(note)+'</li>').join('')||'<li>Melhorias gerais e correções.</li>')+'</ul></article>').join(''):'<div class="empty"><b>Histórico em preparação</b>As notas das próximas versões aparecerão aqui.</div>';
+}
+function renderUpdateState(){
+ const banner=$('#update-banner'),dot=$('#update-nav-dot'),status=$('#updates-status'),latestCopy=$('#updates-latest-copy'),download=$('#updates-download');
+ if(!updateManifest)return;
+ const latest=String(updateManifest.latestVersion||APP_VERSION),notes=String(updateManifest.summary||'Novidades e melhorias disponíveis.');
+ const dismissed=localStorage.getItem('nexus-update-dismissed')===latest;
+ updateAvailable=versionNumber(latest)>versionNumber(APP_VERSION);
+ if(banner){banner.classList.toggle('visible',updateAvailable&&!dismissed);$('#update-banner-title').textContent='NEXUS PLAYER '+latest+' disponível';$('#update-banner-copy').textContent=notes;}
+ if(dot)dot.hidden=!updateAvailable;
+ if(status){status.textContent=updateAvailable?'Nova versão disponível':'Aplicativo atualizado';status.style.color=updateAvailable?'#d6a2ff':'';}
+ if(latestCopy)latestCopy.textContent=updateAvailable?'A versão mais recente é '+latest+'. Sua versão instalada é '+APP_VERSION+'.':'Você está usando a versão mais recente publicada ('+latest+').';
+ if(download){download.style.display=updateAvailable?'inline-block':'none';download.href=updateManifest.downloadUrl||'https://github.com/cildojuniorbt-cmd/NEXUS-PLAYER/releases/latest';}
+ $('#updates-current-version').textContent=APP_VERSION;
+ renderUpdateHistory();
+}
+async function checkForUpdates(){
+ try{
+  const response=await fetch(UPDATE_MANIFEST_URL+'?t='+Date.now(),{cache:'no-store'});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  updateManifest=await response.json();
+  renderUpdateState();
+ }catch(error){console.info('NEXUS UPDATE: não foi possível consultar atualizações agora.',error);}
+}
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1125,6 +1169,7 @@ function renderAll(){
   case 'equalizer':renderEqualizer();break;
   case 'explore':renderExplore();break;
   case 'favorites':listInto('#favorites-list',tracks.filter(track=>track.favorite),{empty:'Marque uma faixa com coração para vê-la aqui.'});break;
+  case 'updates':renderUpdateState();break;
  }
 }
 function updateGraph(){
@@ -1657,6 +1702,10 @@ function seek(v){if(Number.isFinite(media.duration)&&media.duration>0)media.curr
 $('#mini-seek').addEventListener('input',e=>seek(e.target.value));$('#home-seek').addEventListener('input',e=>seek(e.target.value));
 $('#home-viz-prev').addEventListener('click',()=>setVisualizerStyle('previous'));
 $('#home-viz-next').addEventListener('click',()=>setVisualizerStyle('next'));
+$('#updates-shortcut').addEventListener('click',()=>go('updates'));
+$('#update-open').addEventListener('click',()=>go('updates'));
+$('#update-later').addEventListener('click',()=>{if(updateManifest){localStorage.setItem('nexus-update-dismissed',String(updateManifest.latestVersion||''));renderUpdateState();}});
+$('#updates-check').addEventListener('click',async()=>{await checkForUpdates();notice(updateAvailable?'Nova atualização encontrada!':'Você já está com a versão mais recente.');});
 $('#add').addEventListener('click',()=>picker.click());$('#import-more').addEventListener('click',()=>picker.click());
 picker.addEventListener('change',()=>{importFiles(picker.files);picker.value='';});
 $('#home-import').addEventListener('click',()=>picker.click());$('#home-play').addEventListener('click',toggle);$('#home-prev').addEventListener('click',prev);$('#home-next').addEventListener('click',next);$('#home-shuffle').addEventListener('click',()=>{
@@ -1874,6 +1923,7 @@ async function boot(){
  else tracks=[];
  await loadPlaylists();
  renderAll();startVisualizer();
+ checkForUpdates();
 }
 boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
