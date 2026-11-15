@@ -16,6 +16,7 @@ on:
       - 'README.md'
       - 'capacitor.config.ts'
       - 'scripts/**'
+      - 'android-native/**'
       - '.github/workflows/android-debug-apk.yml'
 
 permissions:
@@ -65,15 +66,24 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Install NEXUS native updater
+        run: node scripts/prepare-android-updater.mjs
+
       - name: Configure permanent Android signing
+        id: signing
         env:
           NEXUS_KEYSTORE_BASE64: ${{ secrets.NEXUS_KEYSTORE_BASE64 }}
           NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
           NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
           NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
         run: |
+          if [ -z "$NEXUS_KEYSTORE_BASE64" ] && [ -z "$NEXUS_KEYSTORE_PASSWORD" ] && [ -z "$NEXUS_KEY_ALIAS" ] && [ -z "$NEXUS_KEY_PASSWORD" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets not configured yet. Building a debug APK for development."
+            exit 0
+          fi
           if [ -z "$NEXUS_KEYSTORE_BASE64" ] || [ -z "$NEXUS_KEYSTORE_PASSWORD" ] || [ -z "$NEXUS_KEY_ALIAS" ] || [ -z "$NEXUS_KEY_PASSWORD" ]; then
-            echo "::error::Configure the four NEXUS signing secrets before building a distributable APK."
+            echo "::error::All four NEXUS signing secrets must be configured together."
             exit 1
           fi
           mkdir -p "$RUNNER_TEMP/nexus-signing"
@@ -85,8 +95,10 @@ jobs:
             echo "NEXUS_KEY_ALIAS=$NEXUS_KEY_ALIAS"
             echo "NEXUS_KEY_PASSWORD=$NEXUS_KEY_PASSWORD"
           } >> "$GITHUB_ENV"
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Configure release signing
+        if: steps.signing.outputs.configured == 'true'
         working-directory: android
         run: |
           cat >> app/build.gradle <<'GRADLE'
@@ -110,13 +122,21 @@ jobs:
           GRADLE
 
       - name: Build signed release APK
+        if: steps.signing.outputs.configured == 'true'
         working-directory: android
         run: ./gradlew assembleRelease
+
+      - name: Build debug APK (development only)
+        if: steps.signing.outputs.configured != 'true'
+        working-directory: android
+        run: ./gradlew assembleDebug
 
       - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-player-android-release
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: nexus-player-android-apk
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
