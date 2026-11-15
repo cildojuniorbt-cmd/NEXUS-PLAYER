@@ -1058,39 +1058,16 @@ async function deletePlaylistRecord(playlistId){
  if(!localSaved&&!indexedDBSaved)throw new Error('Não foi possível excluir a playlist.');
  return {localSaved,indexedDBSaved};
 }
-// NEXUS PLAYER: portable library backup. Audio and cover Blobs are encoded as base64.
-function bytesToBase64(buffer){
- const bytes=new Uint8Array(buffer),chunk=0x8000;
- let binary='';
- for(let offset=0;offset<bytes.length;offset+=chunk)binary+=String.fromCharCode(...bytes.subarray(offset,Math.min(offset+chunk,bytes.length)));
- return btoa(binary);
-}
-function base64ToBlob(encoded,type){
- const binary=atob(String(encoded||''));
- const bytes=new Uint8Array(binary.length);
- for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
- return new Blob([bytes],{type:type||'application/octet-stream'});
-}
-async function serializeBackupTrack(track){
- const record={...track};
- delete record.blob;delete record.coverBlob;
- return {
-  record,
-  blob:track.blob?{type:track.blob.type||'application/octet-stream',data:bytesToBase64(await track.blob.arrayBuffer())}:null,
-  coverBlob:track.coverBlob?{type:track.coverBlob.type||'application/octet-stream',data:bytesToBase64(await track.coverBlob.arrayBuffer())}:null
- };
-}
+// Backup serialization is shared with Node's automated integrity tests.
 async function createLibraryBackup(){
  if(!db)throw new Error('A biblioteca local ainda não está disponível.');
+ const core=await import('./scripts/library-backup-core.mjs');
  const storedTracks=await all('tracks');
- const storedPlaylists=normalizePlaylists(await all('playlists'));
- const payload={format:'nexus-player-library-backup',version:1,createdAt:new Date().toISOString(),trackCount:storedTracks.length,playlistCount:storedPlaylists.length,tracks:[],playlists:storedPlaylists};
- for(let i=0;i<storedTracks.length;i++){
-  const track=storedTracks[i];
-  payload.tracks.push(await serializeBackupTrack(track));
-  const status=$('#backup-status');
-  if(status)status.textContent='Preparando backup: '+(i+1)+' de '+storedTracks.length+' arquivos...';
- }
+ const cachedPlaylists=readPlaylistCache();
+ const storedPlaylists=cachedPlaylists!==null?cachedPlaylists:normalizePlaylists(await all('playlists'));
+ const payload=await core.buildLibraryBackup(storedTracks,storedPlaylists);
+ const status=$('#backup-status');
+ if(status)status.textContent='Backup preparado: '+payload.trackCount+' arquivos e '+payload.playlistCount+' playlists.';
  return payload;
 }
 async function exportLibraryBackup(){
@@ -1116,15 +1093,15 @@ async function exportLibraryBackup(){
 async function restoreLibraryBackup(file){
  const status=$('#backup-status');
  if(!db)throw new Error('A biblioteca local ainda não está disponível.');
- if(!file) return;
+ if(!file)return;
  if(status)status.textContent='Lendo e validando o arquivo de backup...';
+ const core=await import('./scripts/library-backup-core.mjs');
  const payload=JSON.parse(await file.text());
- if(!payload||payload.format!=='nexus-player-library-backup'||payload.version!==1||!Array.isArray(payload.tracks)||!Array.isArray(payload.playlists))throw new Error('Esse arquivo não é um backup válido do NEXUS PLAYER.');
- const restoredTracks=payload.tracks.map(item=>{
-  if(!item||!item.record||!item.record.id)throw new Error('O backup contém uma faixa inválida.');
-  return {...item.record,blob:item.blob?base64ToBlob(item.blob.data,item.blob.type):null,coverBlob:item.coverBlob?base64ToBlob(item.coverBlob.data,item.coverBlob.type):null};
- });
- const restoredPlaylists=normalizePlaylists(payload.playlists);
+ // Fully validate and decode before opening a write transaction. Invalid files
+ // must never clear or partially overwrite the existing library.
+ const restored=core.parseLibraryBackup(payload);
+ const restoredTracks=restored.tracks;
+ const restoredPlaylists=normalizePlaylists(restored.playlists);
  if(status)status.textContent='Restaurando '+restoredTracks.length+' arquivos e '+restoredPlaylists.length+' playlists...';
  await new Promise((resolve,reject)=>{
   let tx;
