@@ -2,6 +2,12 @@ name: Android debug APK
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publicar esta compilação como atualização oficial"
+        required: true
+        type: boolean
+        default: false
   push:
     branches:
       - feature/android-native-foundation
@@ -132,11 +138,28 @@ jobs:
         run: ./gradlew assembleDebug
 
       - name: Upload signed release APK
+        if: steps.signing.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-player-android-apk
-          path: |
-            android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/apk/debug/app-debug.apk
+          name: nexus-player-android-release
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload debug APK for development
+        if: steps.signing.outputs.configured != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-player-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish official Android release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release && steps.signing.outputs.configured == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nexus-player-v41
+          name: NEXUS PLAYER Android
+          files: android/app/build/outputs/apk/release/app-release.apk
+          make_latest: true
