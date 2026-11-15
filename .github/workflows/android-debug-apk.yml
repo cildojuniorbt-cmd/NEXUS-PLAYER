@@ -54,6 +54,14 @@ jobs:
       - name: Generate Android project
         run: npx cap add android
 
+      - name: Generate Android app icon matching iOS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          mkdir -p assets
+          magick icons/nexus-player-apple-v5.png -filter Lanczos -resize 1024x1024 assets/icon.png
+          npx capacitor-assets generate --android --iconBackgroundColor '#080814' --iconBackgroundColorDark '#080814'
+
       - name: Sync Capacitor
         run: npx cap sync android
 
