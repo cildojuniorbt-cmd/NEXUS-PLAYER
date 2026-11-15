@@ -838,7 +838,7 @@ const $=s=>document.querySelector(s);
 const APP_VERSION='V39';
 const UPDATE_MANIFEST_URL='https://cildojuniorbt-cmd.github.io/NEXUS-PLAYER/update-manifest.json';
 let updateManifest=null,updateAvailable=false;
-function versionNumber(value){const match=String(value||'').match(/(\\d+)/);return match?Number(match[1]):0;}
+function versionNumber(value){const match=String(value||'').match(/(\d+)/);return match?Number(match[1]):0;}
 function renderUpdateHistory(){
  const list=$('#update-history-list');if(!list)return;
  const history=updateManifest&&Array.isArray(updateManifest.history)?updateManifest.history:[];
