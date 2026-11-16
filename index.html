@@ -821,7 +821,7 @@ html.pwa-standalone,html.pwa-standalone *{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V40';
+const APP_VERSION='V41';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1204,8 +1204,18 @@ function updateMediaSession(force=false){
  try{
   if(force||lastMediaSessionTrackKey!==trackKey){
    if(track&&'MediaMetadata' in window){
-    const artwork=track.coverBlob?urlFor(track,true):'';
-    session.metadata=new MediaMetadata({title:track.name||'Nexus Player',artist:track.artist||'Artista desconhecido',album:track.album||'Nexus Player',artwork:artwork?[{src:artwork,sizes:'512x512'}]:[]});
+    // Always provide real artwork to iOS. With no user cover, use a
+    // dedicated opaque square NEXUS image instead of the rounded PWA icon.
+    const hasTrackCover=!!track.coverBlob;
+    const artwork=hasTrackCover?urlFor(track,true):'./assets/nexus-media-art.svg?v=1';
+    const artworkItem={src:artwork,sizes:'512x512'};
+    if(!hasTrackCover)artworkItem.type='image/svg+xml';
+    session.metadata=new MediaMetadata({
+     title:track.name||'Nexus Player',
+     artist:track.artist||'Artista desconhecido',
+     album:track.album||'Nexus Player',
+     artwork:[artworkItem]
+    });
    }else session.metadata=null;
    lastMediaSessionTrackKey=trackKey;
   }
@@ -1892,10 +1902,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v40';
+   const key='nexus-player-sw-refreshed-v41';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=40',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=41',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
