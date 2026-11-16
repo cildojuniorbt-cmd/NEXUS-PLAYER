@@ -821,7 +821,7 @@ html.pwa-standalone,html.pwa-standalone *{
 (()=>{
 'use strict';
 const $=s=>document.querySelector(s);
-const APP_VERSION='V41';
+const APP_VERSION='V42';
 const audio=$('#audio-media'),video=$('#video-media'),picker=$('#files');
 $('#app-version').textContent=APP_VERSION;
 const isAppleMobile=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1247,19 +1247,29 @@ function updateMediaSessionPosition(force=false){
  }catch(_){}
 }
 function startPlayback(){
- const el=media;if(!currentTrack())return;
+ const el=media,track=currentTrack();
+ if(!track)return;
  el.muted=false;el.volume=1;
- if(isAppleMobile){
-  // Keep the audible track on iOS's native media pipeline.
-  setPlaybackAudioSession();
- }else{
-  try{ensureGraph(el);}catch(error){console.warn(error);}
-  try{if(ctx&&ctx.state!=='running')ctx.resume().catch(error=>console.warn('AudioContext:',error));}catch(error){console.warn(error);}
+ // Set the playback category before creating/resuming Web Audio. On iOS,
+ // AudioContext must be activated from this user gesture to qualify for
+ // background Now Playing playback. Keep using the same media element:
+ // no second/silent player is introduced.
+ if(isAppleMobile)setPlaybackAudioSession();
+ if(!isVideo(track)){
+  try{
+   const graph=ensureGraph(el);
+   if(graph&&ctx&&ctx.state!=='running'){
+    const resumeTask=ctx.resume();
+    if(resumeTask&&typeof resumeTask.catch==='function'){
+     resumeTask.catch(error=>console.warn('Nexus AudioContext resume:',error));
+    }
+   }
+  }catch(error){
+   console.warn('Nexus EQ graph activation:',error);
+  }
  }
  let playPromise;
  try{playPromise=el.play();}catch(error){reportPlayError(error);return;}
- // Invoke the silent analyser after the native media play request, inside
- // the same click/tap gesture accepted by iOS.
  Promise.resolve(playPromise).then(()=>{
   renderPlayer();updateMediaSession();
  }).catch(reportPlayError);
@@ -1902,10 +1912,10 @@ boot();
 if('serviceWorker'in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>{
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-   const key='nexus-player-sw-refreshed-v41';
+   const key='nexus-player-sw-refreshed-v42';
    if(!sessionStorage.getItem(key)){sessionStorage.setItem(key,'1');location.reload();}
   });
-  navigator.serviceWorker.register('./sw.js?v=41',{updateViaCache:'none'})
+  navigator.serviceWorker.register('./sw.js?v=42',{updateViaCache:'none'})
    .then(registration=>registration.update())
    .catch(error=>console.warn('Service worker update:',error));
  });
