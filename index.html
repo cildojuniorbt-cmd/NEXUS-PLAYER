@@ -1210,7 +1210,7 @@ function applyAccentTheme(name,persist=true){
 }
 function row(t,opts={}){
  const dragHandle=opts.reorder?'<button type="button" class="row-drag-handle" aria-label="Segure para reorganizar a faixa" title="Segure e arraste para reorganizar">⠿</button>':'';
- return '<div class="track-row '+(currentTrack()&&currentTrack().id===t.id?'current':'')+'" data-play="'+esc(t.id)+'">'+dragHandle+'<div class="track-thumb">'+(t.coverBlob?'<img src="'+urlFor(t,true)+'" alt="">':'♫')+'</div><div class="track-info"><b>'+esc(t.name)+'</b><small>'+esc(t.artist||'Artista desconhecido')+' · '+(isVideo(t)?'Vídeo':'Áudio')+'</small></div><div class="row-actions"><button data-fav="'+esc(t.id)+'" title="Favorito">'+(t.favorite?'♥':'♡')+'</button>'+(opts.add?'<button data-add="'+esc(t.id)+'" title="Adicionar à playlist">＋</button>':'')+(opts.remove?'<button data-remove="'+esc(t.id)+'" title="Remover da playlist">−</button>':'')+'<button data-more="'+esc(t.id)+'" title="Editar">···</button></div></div>';
+ return '<div class="track-row '+(currentTrack()&&currentTrack().id===t.id?'current':'')+'" data-play="'+esc(t.id)+'">'+dragHandle+'<div class="track-thumb">'+(t.coverBlob?'<img src="'+urlFor(t,true)+'" alt="">':'♫')+'</div><div class="track-info"><b>'+esc(t.name)+'</b><small>'+esc(t.artist||'Artista desconhecido')+' · '+(isVideo(t)?'Vídeo':'Áudio')+'</small></div><div class="row-actions"><button data-fav="'+esc(t.id)+'" title="Favorito">'+(t.favorite?'♥':'♡')+'</button>'+(opts.add?'<button data-add="'+esc(t.id)+'" title="Adicionar à playlist">＋</button>':'')+(opts.remove?'<button type="button" data-remove="'+esc(t.id)+'" aria-label="Remover da playlist" title="Remover da playlist">×</button>':'')+(opts.delete?'<button type="button" data-delete-track="'+esc(t.id)+'" aria-label="Excluir música da biblioteca" title="Excluir música da biblioteca">🗑</button>':'')+'<button data-more="'+esc(t.id)+'" title="Editar">···</button></div></div>';
 }
 function listInto(sel,arr,opts={}){
  const element=$(sel);
@@ -1243,7 +1243,7 @@ function renderHome(){
    :[demoPlaylist('Rock Indie',32,'sample-rock'),demoPlaylist('Indie Brasil',48,'sample-indie'),demoPlaylist('Viagem',57,'sample-trip')].join('');
  }
 }
-function renderLibrary(){const q=$('#search').value.toLowerCase();const arr=tracks.filter(t=>(libraryFilter==='all'||(libraryFilter==='audio'?!isVideo(t):isVideo(t)))&&(t.name+' '+(t.artist||'')+' '+(t.album||'')).toLowerCase().includes(q));$('#library-count').textContent=tracks.length+' arquivos neste dispositivo';listInto('#library-list',arr,{add:true,empty:'Importe MP3, WAV, FLAC, M4A, MP4 e outros formatos suportados.'});document.querySelectorAll('[data-library-filter]').forEach(b=>b.classList.toggle('active',b.dataset.libraryFilter===libraryFilter));}
+function renderLibrary(){const q=$('#search').value.toLowerCase();const arr=tracks.filter(t=>(libraryFilter==='all'||(libraryFilter==='audio'?!isVideo(t):isVideo(t)))&&(t.name+' '+(t.artist||'')+' '+(t.album||'')).toLowerCase().includes(q));$('#library-count').textContent=tracks.length+' arquivos neste dispositivo';listInto('#library-list',arr,{add:true,delete:true,empty:'Importe MP3, WAV, FLAC, M4A, MP4 e outros formatos suportados.'});document.querySelectorAll('[data-library-filter]').forEach(b=>b.classList.toggle('active',b.dataset.libraryFilter===libraryFilter));}
 function renderPlaylists(){
  playlists=(Array.isArray(playlists)?playlists:[])
   .filter(item=>item&&item.id)
@@ -1618,6 +1618,43 @@ async function createPlaylist(event){
 async function removePlaylistTrack(trackId){
  const p=playlists.find(x=>x.id===selectedPlaylist);if(!p)return;
  p.trackIds=p.trackIds.filter(x=>x!==trackId);await savePlaylistRecord(p);renderAll();
+}
+async function deleteTrackRecord(trackId){
+ const track=tracks.find(item=>item.id===trackId);
+ if(!track)throw new Error('Essa música não está mais na biblioteca.');
+ if(!db)throw new Error('A biblioteca local ainda não está disponível.');
+ const nextPlaylists=playlists.map(item=>({...item,trackIds:item.trackIds.filter(id=>id!==trackId)}));
+ await new Promise((resolve,reject)=>{
+  let tx;
+  try{
+   tx=db.transaction(['tracks','playlists'],'readwrite');
+   tx.objectStore('tracks').delete(trackId);
+   const playlistStore=tx.objectStore('playlists');
+   nextPlaylists.forEach(item=>playlistStore.put(item));
+  }catch(error){reject(error);return;}
+  tx.oncomplete=resolve;
+  tx.onerror=()=>reject(tx.error||new Error('Não foi possível excluir a música.'));
+  tx.onabort=()=>reject(tx.error||new Error('A exclusão foi cancelada.'));
+ });
+ const wasCurrent=currentTrack()&&currentTrack().id===trackId;
+ tracks=tracks.filter(item=>item.id!==trackId);
+ playlists=nextPlaylists;
+ try{writePlaylistCache(nextPlaylists);}catch(error){console.warn('Faixas removidas das playlists no banco, mas o cache não pôde ser atualizado:',error);}
+ queue=queue.filter(id=>id!==trackId);
+ if(Array.isArray(shuffleOrder))shuffleOrder=shuffleOrder.filter(id=>id!==trackId);
+ if(wasCurrent){
+  audio.pause();video.pause();audio.removeAttribute('src');video.removeAttribute('src');audio.load();video.load();
+  current=-1;onlineTrack=null;onlineQueue=[];onlineIndex=-1;media=audio;
+  resetPlaybackQueue();updateMediaSession(true);
+ }
+ [trackId,trackId+':cover'].forEach(key=>{if(urls.has(key)){URL.revokeObjectURL(urls.get(key));urls.delete(key);}});
+}
+async function deleteLibraryTrack(trackId){
+ const track=tracks.find(item=>item.id===trackId);if(!track)return;
+ const label=track.name||'esta música';
+ if(!confirm('Excluir “'+label+'” da biblioteca? Ela também será removida de todas as playlists. Esta ação não pode ser desfeita.'))return;
+ try{await deleteTrackRecord(trackId);renderAll();notice('“'+label+'” foi excluída da biblioteca e das playlists.');}
+ catch(error){console.error('NEXUS PLAYER: falha ao excluir música',error);notice(error&&error.message?error.message:'Não foi possível excluir a música.');}
 }
 async function renamePlaylist(){
  const p=playlists.find(x=>x.id===selectedPlaylist);if(!p)return;
@@ -2120,13 +2157,13 @@ document.addEventListener('click',event=>{
   event.preventDefault();event.stopPropagation();
  }
 },true);
-$('#playlist-track-list').addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;const p=playlists.find(x=>x.id===selectedPlaylist);if(!p)return;p.trackIds=p.trackIds.filter(x=>x!==b.dataset.remove);savePlaylistRecord(p).then(renderPlaylists).catch(error=>{console.error(error);notice(error.message||'Não foi possível atualizar a playlist.');});});
+
 
 
 
 $('#genre-pills').addEventListener('click',e=>{const b=e.target.closest('[data-genre]');if(!b)return;genre=b.dataset.genre;document.querySelectorAll('[data-genre]').forEach(x=>x.classList.toggle('active',x===b));renderExplore();});
 function renderExplore(){const q=$('#search').value.toLowerCase();const arr=tracks.filter(t=>!isVideo(t)&&(t.name+' '+(t.artist||'')+' '+(t.genre||'')).toLowerCase().includes(q)&&(genre==='all'||(t.genre||'').toLowerCase()===genre.toLowerCase()));listInto('#explore-list',arr,{empty:'Adicione músicas e edite o estilo nas informações da faixa para explorar por gênero.'});}
-document.body.addEventListener('click',e=>{const demoAlbum=e.target.closest('[data-demo-album]');if(demoAlbum){notice('Prévia visual de '+demoAlbum.dataset.demoAlbum+'. Importe o áudio para reproduzir.');go('library');return;}const demoPlaylist=e.target.closest('[data-demo-playlist]');if(demoPlaylist){$('#playlist-name').value=demoPlaylist.dataset.demoPlaylist;go('playlists');notice('Nome sugerido preenchido. Crie a playlist para começar.');return;}const remove=e.target.closest('[data-remove]');if(remove){e.stopPropagation();const p=playlists.find(x=>x.id===selectedPlaylist);if(p){p.trackIds=p.trackIds.filter(x=>x!==remove.dataset.remove);savePlaylistRecord(p).then(()=>{renderAll();notice('Faixa removida da playlist.');}).catch(error=>{console.error(error);notice(error.message||'Não foi possível remover a faixa.');});}return;}const fav=e.target.closest('[data-fav]');if(fav){e.stopPropagation();favorite(fav.dataset.fav);return;}const add=e.target.closest('[data-add]');if(add){e.stopPropagation();if(!playlists.length){notice('Crie uma playlist antes de adicionar faixas.');go('playlists');return;}const pName=prompt('Digite o nome da playlist:\\n'+playlists.map(p=>p.name).join('\\n'));const p=playlists.find(x=>x.name.toLowerCase()===String(pName||'').toLowerCase());if(!p){notice('Playlist não encontrada.');return;}const trackId=add.dataset.add;if(p.trackIds.includes(trackId)){notice('Já está nessa playlist.');return;}p.trackIds.push(trackId);savePlaylistRecord(p).then(()=>{renderAll();notice('Música adicionada à playlist.');}).catch(error=>{console.error(error);notice(error.message||'Não foi possível adicionar a música.');});return;}const more=e.target.closest('[data-more]');if(more){e.stopPropagation();const t=tracks.find(x=>x.id===more.dataset.more);if(t)editTrack(t.id);return;}const play=e.target.closest('[data-play]');if(play){if(e.target.closest('button[data-fav],button[data-add],button[data-more]'))return;const contextQueue=queueForTrackElement(play,play.dataset.play);selectTrack(play.dataset.play,contextQueue);}});
+document.body.addEventListener('click',e=>{const demoAlbum=e.target.closest('[data-demo-album]');if(demoAlbum){notice('Prévia visual de '+demoAlbum.dataset.demoAlbum+'. Importe o áudio para reproduzir.');go('library');return;}const demoPlaylist=e.target.closest('[data-demo-playlist]');if(demoPlaylist){$('#playlist-name').value=demoPlaylist.dataset.demoPlaylist;go('playlists');notice('Nome sugerido preenchido. Crie a playlist para começar.');return;}const deleteButton=e.target.closest('[data-delete-track]');if(deleteButton){e.stopPropagation();deleteLibraryTrack(deleteButton.dataset.deleteTrack);return;}const remove=e.target.closest('[data-remove]');if(remove){e.stopPropagation();const p=playlists.find(x=>x.id===selectedPlaylist);if(p){p.trackIds=p.trackIds.filter(x=>x!==remove.dataset.remove);savePlaylistRecord(p).then(()=>{renderAll();notice('Faixa removida da playlist.');}).catch(error=>{console.error(error);notice(error.message||'Não foi possível remover a faixa.');});}return;}const fav=e.target.closest('[data-fav]');if(fav){e.stopPropagation();favorite(fav.dataset.fav);return;}const add=e.target.closest('[data-add]');if(add){e.stopPropagation();if(!playlists.length){notice('Crie uma playlist antes de adicionar faixas.');go('playlists');return;}const pName=prompt('Digite o nome da playlist:\\n'+playlists.map(p=>p.name).join('\\n'));const p=playlists.find(x=>x.name.toLowerCase()===String(pName||'').toLowerCase());if(!p){notice('Playlist não encontrada.');return;}const trackId=add.dataset.add;if(p.trackIds.includes(trackId)){notice('Já está nessa playlist.');return;}p.trackIds.push(trackId);savePlaylistRecord(p).then(()=>{renderAll();notice('Música adicionada à playlist.');}).catch(error=>{console.error(error);notice(error.message||'Não foi possível adicionar a música.');});return;}const more=e.target.closest('[data-more]');if(more){e.stopPropagation();const t=tracks.find(x=>x.id===more.dataset.more);if(t)editTrack(t.id);return;}const play=e.target.closest('[data-play]');if(play){if(e.target.closest('button[data-fav],button[data-add],button[data-remove],button[data-delete-track],button[data-more]'))return;const contextQueue=queueForTrackElement(play,play.dataset.play);selectTrack(play.dataset.play,contextQueue);}});
 document.body.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-play]')){e.preventDefault();const contextQueue=queueForTrackElement(e.target,e.target.dataset.play);selectTrack(e.target.dataset.play,contextQueue);}});
 function mediaSession(t){if(!('mediaSession'in navigator)||!t)return;try{navigator.mediaSession.metadata=new MediaMetadata({title:t.name,artist:t.artist||'Nexus Player',album:t.album||'Biblioteca'});navigator.mediaSession.setActionHandler('play',toggle);navigator.mediaSession.setActionHandler('pause',()=>media.pause());navigator.mediaSession.setActionHandler('previoustrack',prev);navigator.mediaSession.setActionHandler('nexttrack',next);}catch(_){}}
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search').focus();}if(e.code==='Space'&&!['INPUT','TEXTAREA','BUTTON','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();toggle();}});
